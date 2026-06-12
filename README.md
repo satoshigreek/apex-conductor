@@ -16,9 +16,9 @@ Two surfaces, one system (see [SPEC.md](SPEC.md)):
 | **M0** scaffold | ✅ `pnpm build && pnpm test` green (10 packages, 65+ tests) |
 | **M1** registry truth | ✅ live datum audit ([docs/datum-audit.md](docs/datum-audit.md)) — 782 agents indexed from Vector **mainnet**; `GET /v1/agents` verified live; BLOCKER-3 confirmed → manifest fallback shipped |
 | **M2** conductor MVP | ✅ code + local E2E (`node scripts/e2e-local.mjs`: live catalog → manifest → routed agent call → tier-0 verify → payment → anchor). ⏳ on-chain testnet E2E needs faucet funds (see CLAUDE.md gates) |
-| **M3** refuel | ✅ code + live mainnet **quotes** through the corrected Slipstream route (~$0.0173/bAP3X); x402 endpoint tested against a mock facilitator. ⏳ live swap is a manual `$5 / REFUEL_LIVE=true` step; real facilitator settle blocked by BLOCKER-6 (x402 v2) |
-| **M4** escrow (Aiken) | ⛔ not started — needs Aiken toolchain + external audit before mainnet |
-| **M5** mainnet gate | ⛔ gated on M4 |
+| **M3** refuel | ✅ code + live mainnet **quotes** through the corrected Slipstream route (~$0.0173/bAP3X); x402 **v2** settle path wire-confirmed against the live x402.org facilitator (BLOCKER-6 resolved). ⏳ live swap is a manual `$5 / REFUEL_LIVE=true` step |
+| **M4** escrow (Aiken) | 🟡 validator written, `aiken check` 10/10 green, blueprint built ([contracts/escrow](contracts/escrow)). ⏳ testnet deploy + PaymentEngine v2 integration + **external audit before mainnet** |
+| **M5** mainnet gate | ⛔ gated on M4 audit |
 
 Read the **blockers ledger in [CLAUDE.md](CLAUDE.md)** before touching bridge, registry, or swap code —
 two spec assumptions were corrected against the live chain (BLOCKER-5 swap route, BLOCKER-6 x402 version).
