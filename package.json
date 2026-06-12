@@ -1,0 +1,27 @@
+{
+  "name": "apex-conductor",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run typecheck",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev --parallel",
+    "db:migrate": "tsx infra/migrations/run.ts",
+    "indexer:dev": "pnpm --filter @apex/indexer dev",
+    "audit:datums": "tsx scripts/audit-datums.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3",
+    "zod": "^3.23.8"
+  }
+}
