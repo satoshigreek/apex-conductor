@@ -32,6 +32,7 @@ export interface StepView {
   kind: string;
   status: string;
   agentId: string | null;
+  output: unknown;
   feePaidAp3x: number | null;
   paymentTx: string | null;
 }

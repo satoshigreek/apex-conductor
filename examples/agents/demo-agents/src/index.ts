@@ -39,13 +39,49 @@ export const StakerAgent: DemoAgent = {
   },
 };
 
-/** Extractive summarizer — deterministic, no LLM dependency, ideal for E2E tests. */
+/**
+ * News agent — fetches live headlines from Google News RSS (a toolkit connector) for the
+ * intent topic; falls back to extractive summarization of provided text. No LLM dependency.
+ */
 export const NewsSummarizerAgent: DemoAgent = {
   name: "NewsSummarizerAgent",
-  capabilities: ["news", "summarize"],
+  capabilities: ["news", "summarize", "research"],
   priceAp3x: 2,
   async handle(input) {
-    const text = extractText(input) ?? "";
+    // a document (text/article/content) is summarized offline; a bare intent is a news QUERY
+    const doc = extractDoc(input);
+    const query = doc ? null : findStringKey(input, "intent");
+    const text = doc ?? query ?? extractText(input) ?? "";
+    const topic = doc ? null : newsTopic(text);
+    if (topic) {
+      try {
+        const res = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`, {
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.ok) {
+          const xml = await res.text();
+          const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 5).map((m) => {
+            const block = m[1]!;
+            const title = block.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/)?.[1]?.trim() ?? "";
+            const link = block.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() ?? "";
+            const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim() ?? "";
+            return { title: decodeXml(title), link, pubDate };
+          });
+          if (items.length > 0) {
+            return {
+              kind: "news",
+              topic,
+              headline: items[0]!.title,
+              headlines: items,
+              source: "Google News RSS",
+              fetchedAt: new Date().toISOString(),
+            };
+          }
+        }
+      } catch {
+        /* fall through to extractive summary */
+      }
+    }
     const sentences = text
       .split(/(?<=[.!?])\s+/)
       .map((s) => s.trim())
@@ -54,6 +90,55 @@ export const NewsSummarizerAgent: DemoAgent = {
     return { kind: "summary", headline: summary.slice(0, 120) || "(empty input)", summary, sentenceCount: sentences.length };
   },
 };
+
+const STOPWORDS = new Set(
+  "what is are was were the a an on in of for to and or going goin happening happens latest news about update updates current today now tell me show find get".split(" "),
+);
+
+/** pull a search topic out of a news-shaped intent; null if the input is a text blob to summarize */
+function newsTopic(text: string): string | null {
+  if (text.length > 400) return null; // long input = document to summarize, not a query
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !STOPWORDS.has(w));
+  return words.length > 0 ? words.slice(0, 6).join(" ") : null;
+}
+
+/** document payloads (to summarize) come under text/article/content keys */
+function extractDoc(input: unknown, depth = 0): string | null {
+  if (depth > 3 || !input || typeof input !== "object") return null;
+  const o = input as Record<string, unknown>;
+  for (const key of ["text", "article", "content"]) {
+    if (typeof o[key] === "string") return o[key] as string;
+  }
+  for (const value of Object.values(o)) {
+    const nested = extractDoc(value, depth + 1);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+function findStringKey(input: unknown, key: string, depth = 0): string | null {
+  if (depth > 3 || !input || typeof input !== "object") return null;
+  const o = input as Record<string, unknown>;
+  if (typeof o[key] === "string") return o[key] as string;
+  for (const value of Object.values(o)) {
+    const nested = findStringKey(value, key, depth + 1);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+function decodeXml(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'");
+}
 
 /** AP3X price quote — CoinGecko when reachable, deterministic fallback otherwise. */
 export const PriceQuoteAgent: DemoAgent = {

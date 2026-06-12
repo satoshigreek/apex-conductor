@@ -183,6 +183,7 @@ export default function ConductorPage() {
               </button>
             )}
             {view.task.error && <p className="font-mono text-xs text-warn mt-3">{view.task.error}</p>}
+            {view.task.status === "complete" && <ResultPanel view={view} />}
             {view.task.anchorTx && (
               <p className="font-mono text-xs mt-3 text-ink-2">
                 anchored:{" "}
@@ -239,6 +240,78 @@ export default function ConductorPage() {
         </div>
       </aside>
     </div>
+  );
+}
+
+/** the aggregate step's output — the actual answer the network produced */
+function ResultPanel({ view }: { view: TaskView }) {
+  const aggregate = view.steps.find((s) => s.kind === "aggregate");
+  const results = (aggregate?.output as { results?: Record<string, unknown> } | null)?.results;
+  if (!results) return null;
+  return (
+    <div className="mt-4 border-t border-line pt-4">
+      <p className="eyebrow mb-2 text-gold">Result</p>
+      {Object.entries(results).map(([stepId, output]) => (
+        <div key={stepId} className="mb-3">
+          <p className="font-mono text-[10px] text-ink-3 mb-1">{stepId}</p>
+          <StepResult output={output} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StepResult({ output }: { output: unknown }) {
+  const o = output as {
+    kind?: string;
+    headlines?: Array<{ title: string; link: string; pubDate: string }>;
+    summary?: string;
+    topic?: string;
+    source?: string;
+    usd?: number | null;
+    asset?: string;
+    projectedYieldAp3x?: number;
+  } | null;
+
+  if (o?.kind === "news" && o.headlines) {
+    return (
+      <div className="space-y-2">
+        {o.headlines.map((h, i) => (
+          <a
+            key={i}
+            href={h.link}
+            target="_blank"
+            rel="noreferrer"
+            className="block font-body text-sm text-ink hover:text-gold transition leading-snug"
+          >
+            <span className="text-gold mr-2">›</span>
+            {h.title}
+            {h.pubDate && <span className="font-mono text-[10px] text-ink-3 ml-2">{new Date(h.pubDate).toLocaleDateString()}</span>}
+          </a>
+        ))}
+        <p className="font-mono text-[10px] text-ink-3">
+          topic: {o.topic} · source: {o.source}
+        </p>
+      </div>
+    );
+  }
+  if (o?.kind === "summary" && o.summary) {
+    return <p className="font-body text-sm text-ink-2 leading-relaxed">{o.summary}</p>;
+  }
+  if (o?.kind === "price_quote") {
+    return (
+      <p className="font-body text-sm text-ink-2">
+        {o.asset}: {o.usd !== null && o.usd !== undefined ? `$${o.usd}` : "unavailable"} <span className="text-ink-3">({o.source})</span>
+      </p>
+    );
+  }
+  if (o?.kind === "stake_quote" && o.projectedYieldAp3x !== undefined) {
+    return <p className="font-body text-sm text-ink-2">projected yield: {o.projectedYieldAp3x} AP3X</p>;
+  }
+  return (
+    <pre className="bg-void border border-line rounded-sm p-3 font-mono text-[11px] text-ink-2 overflow-x-auto whitespace-pre-wrap max-h-64">
+      {JSON.stringify(output, null, 2)}
+    </pre>
   );
 }
 
