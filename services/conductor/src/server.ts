@@ -35,7 +35,8 @@ interface KeyEntry {
 }
 
 export function buildServer(deps: ServerDeps): FastifyInstance {
-  const app = Fastify({ logger: false });
+  // registry agent ids (policy.assetNameHex) run 121 chars — above Fastify's 100-char param default
+  const app = Fastify({ logger: false, maxParamLength: 256 });
   const limit = deps.rateLimitPerMinute ?? 60;
   const keys: KeyEntry[] = deps.apiKeys.map((entry) => {
     const [key, webhookUrl] = entry.split(/:(.+)/);

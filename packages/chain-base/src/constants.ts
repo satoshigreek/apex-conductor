@@ -16,6 +16,72 @@ export const SWAP_ROUTE = [
   { from: ADDRESSES.USDC, to: ADDRESSES.BAP3X, stable: false, factory: ADDRESSES.AERO_FACTORY },
 ] as const;
 
+/**
+ * BLOCKER-5 (found live 2026-06-12): the SPEC §1.4 v2 route does NOT exist on-chain —
+ * Aerodrome default factory getPool(USDC, bAP3X, stable∈{true,false}) = 0x0. The real
+ * bAP3X/USDC liquidity (~$150k) is the Aerodrome SLIPSTREAM (CL) 0.05% pool. All
+ * addresses below verified on-chain (router/quoter factory() == pool factory).
+ */
+export const SLIPSTREAM = {
+  FACTORY: "0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A",
+  SWAP_ROUTER: "0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5",
+  QUOTER: "0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0",
+  POOL_USDC_BAP3X: "0x5b8bf0cd0fa5bf970ebe558d7551a668dadf3570",
+  TICK_SPACING: 100,
+} as const;
+
+export const SLIPSTREAM_QUOTER_ABI = [
+  {
+    name: "quoteExactInputSingle",
+    type: "function",
+    stateMutability: "view", // declared view so eth_call works; on-chain it's the standard QuoterV2 revert trick
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "amountIn", type: "uint256" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "amountOut", type: "uint256" },
+      { name: "sqrtPriceX96After", type: "uint160" },
+      { name: "initializedTicksCrossed", type: "uint32" },
+      { name: "gasEstimate", type: "uint256" },
+    ],
+  },
+] as const;
+
+export const SLIPSTREAM_ROUTER_ABI = [
+  {
+    name: "exactInputSingle",
+    type: "function",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "recipient", type: "address" },
+          { name: "deadline", type: "uint256" },
+          { name: "amountIn", type: "uint256" },
+          { name: "amountOutMinimum", type: "uint256" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+      },
+    ],
+    outputs: [{ name: "amountOut", type: "uint256" }],
+  },
+] as const;
+
 /** SPEC §5.3 — EIP-3009 domain for USDC on Base. */
 export const USDC_EIP3009_DOMAIN = {
   name: "USD Coin",

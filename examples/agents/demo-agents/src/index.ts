@@ -81,7 +81,7 @@ function extractText(input: unknown): string | null {
   if (typeof input === "string") return input;
   if (input && typeof input === "object") {
     const o = input as Record<string, unknown>;
-    for (const key of ["text", "article", "content", "input"]) {
+    for (const key of ["text", "article", "content", "intent", "args", "input"]) {
       const v = o[key];
       if (typeof v === "string") return v;
       if (v && typeof v === "object") {

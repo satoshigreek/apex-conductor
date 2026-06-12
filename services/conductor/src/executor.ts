@@ -186,7 +186,7 @@ export class Executor {
           }
           break;
         case "agent_call":
-          result = await this.runAgentCall(taskId, planStep, input);
+          result = await this.runAgentCall(taskId, plan, planStep, input);
           break;
       }
       await store.updateStep(record.stepId, {
@@ -234,6 +234,7 @@ export class Executor {
 
   private async runAgentCall(
     taskId: string,
+    plan: TaskPlan,
     step: PlanStep,
     input: Record<string, unknown>,
   ): Promise<{ output: unknown; agentId: string; feePaid?: number; paymentTx?: string }> {
@@ -268,7 +269,14 @@ export class Executor {
 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
-          const output = await this.invokeAgent(agent, { taskId, step: step.id, input, intent: undefined });
+          const output = await this.invokeAgent(agent, {
+            taskId,
+            step: step.id,
+            capability: step.capability,
+            intent: plan.intent,
+            args: step.args ?? null,
+            input,
+          });
           const verification = await verifyStep(step, output, this.deps.llm);
           await this.deps.store.appendEvent("verifier", "verification", { taskId, step: step.id, agent: agent.agentId, ...verification });
           if (!verification.pass) throw new Error(`verification failed (tier ${verification.tier}): ${verification.reason}`);

@@ -42,6 +42,11 @@ export const EnvSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  /** DEV ONLY — route to agents whose manifest signature is not yet verified (never in prod) */
+  ALLOW_UNVERIFIED_MANIFESTS: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
   DATABASE_URL: z.string().default("memory://"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   QUEUE_DRIVER: z.enum(["bullmq", "memory"]).default("memory"),

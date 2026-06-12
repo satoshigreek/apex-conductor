@@ -43,14 +43,31 @@ function makeProvider(): LlmProvider | null {
 const provider = makeProvider();
 if (!provider) log("no LLM API key configured — planner disabled; intents must carry a direct plan (dev mode)");
 
-// TODO(M2): LucidVectorWallet via agent-sdk-ts when VECTOR_HOT_WALLET_MNEMONIC is set (testnet faucet funds)
-const wallet = new MockVectorWallet();
-if (env.VECTOR_HOT_WALLET_MNEMONIC) log("VECTOR_HOT_WALLET_MNEMONIC set, but Lucid wallet wiring lands in M2 E2E — using mock wallet");
+// real Vector wallet (agent-sdk / Lucid Evolution) when a mnemonic is configured; mock otherwise
+import { SdkVectorWallet } from "@apex/chain-vector";
+import type { VectorWallet } from "@apex/chain-vector";
+let wallet: VectorWallet;
+if (env.VECTOR_HOT_WALLET_MNEMONIC) {
+  wallet = await SdkVectorWallet.create({
+    mnemonic: env.VECTOR_HOT_WALLET_MNEMONIC,
+    ogmiosUrl: env.OGMIOS_URL,
+    submitUrl: env.TXSUBMIT_URL,
+    koiosUrl: env.KOIOS_URL,
+    spendLimitPerTx: env.PER_TASK_CAP_AP3X * 1_000_000,
+    spendLimitDaily: env.DAILY_CAP_AP3X * 1_000_000,
+  });
+  log(`SDK wallet active: ${await wallet.address()}`);
+} else {
+  wallet = new MockVectorWallet();
+  log("no VECTOR_HOT_WALLET_MNEMONIC — mock wallet (payments/anchors recorded, not submitted)");
+}
 
 const taskStore = new MemoryTaskStore();
+const resolveOpts = { trustUnverified: env.ALLOW_UNVERIFIED_MANIFESTS };
+if (env.ALLOW_UNVERIFIED_MANIFESTS) log("WARNING: ALLOW_UNVERIFIED_MANIFESTS=true — dev only, never in production");
 const catalog = async () => {
   const minStake = env.ROUTER_MIN_STAKE_AP3X;
-  const resolved = await resolveAll(agentStore);
+  const resolved = await resolveAll(agentStore, undefined, resolveOpts);
   return resolved.filter((r) => r.row.status === "active" && r.profile.stakeAp3x >= minStake).map((r) => r.profile);
 };
 
@@ -86,7 +103,7 @@ const app = buildServer({
   orchestrator,
   store: taskStore,
   agentStore,
-  resolveAgents: (capability) => listCatalog(agentStore, capability ? { capability } : undefined),
+  resolveAgents: (capability) => listCatalog(agentStore, capability ? { capability } : undefined, resolveOpts),
   apiKeys: (process.env.CONDUCTOR_API_KEYS ?? "").split(",").filter(Boolean),
 });
 registerMcp(app, orchestrator, taskStore);

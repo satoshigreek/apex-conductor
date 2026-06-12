@@ -26,9 +26,30 @@ Conductor (LLM master agent orchestrating Vector registry agents) + Refuel (USDC
 ## Blockers ledger
 - **BLOCKER-1** Skyline bridge API not released → `HandoffAdapter` (deep-link) behind `BRIDGE_MODE=handoff`; `SkylineApiAdapter` stub.
 - **BLOCKER-2** Reactor bridge API pending → same adapter pattern.
-- **BLOCKER-3** Registry datum schema may lack `endpoint`/`pricing` → resolved in M1 datum audit; `AgentProfileResolver` merges on-chain datum with signed off-chain manifests (`agent_manifests`).
+- **BLOCKER-3** ✅ CONFIRMED by M1 datum audit (782 live agents, epoch 290): datum =
+  `Constr0[Constr0[ownerPkh], name, description, capabilities[], framework, endpoint(EMPTY), registeredAtMs]`
+  — endpoint slot exists but every live registration left it blank; no pricing/stake fields.
+  Fixes: (a) signed off-chain manifests (`POST /v1/agents/:id/manifest`; CIP-8 signature verification still TODO),
+  (b) proper fix: re-register agents with endpoints via `@apexfusion/agent-sdk registerAgent({endpoint})`.
+  `ALLOW_UNVERIFIED_MANIFESTS=true` trusts unverified manifests — DEV ONLY.
 - **BLOCKER-4** OFT path to Prime unconfirmed (ask Ethernal) → default assumption Base→Prime (Skyline) → Vector (Reactor); `OftAdapter` reserved.
+- **BLOCKER-5** ✅ RESOLVED (found live 2026-06-12): SPEC §1.4's Aerodrome v2 route does not exist on-chain
+  (factory getPool = 0x0 for both stable/volatile). Real liquidity = Slipstream CL 0.05% pool
+  `0x5b8b…3570` (tickSpacing 100, ~$150k). Swap path now uses the Slipstream SwapRouter
+  `0xBE6D…18a5` + Quoter `0x254c…15b0` (both verified on-chain). Live mainnet quotes confirmed (~$0.0173/bAP3X).
+- **BLOCKER-6** x402 facilitator protocol mismatch: SPEC §5.3 fixes the v1 payload (`x402Version: 1`),
+  but the live x402.org facilitator speaks **x402Version 2** envelopes (`eip155:*` networks, new schemes).
+  v1 format kept per spec (and for the missing original front end); real settlement needs a v2 adapter in
+  `packages/x402` — until then `settleWithFacilitator` will fail against x402.org.
 - **MISSING-ARTIFACT** `apex-refuel.html` (SPEC §6.3) was not present on the build machine — `/refuel` web page built from spec description + §1.4 CFG values; drop the original at `apps/refuel/index.html` when located.
+
+## External-resource gates (cannot be closed from code alone)
+- **M2 on-chain testnet E2E**: fund a testnet wallet at the faucet, then
+  `AGENT_MNEMONIC=… AGENT_PUBLIC_URL=… tsx examples/agents/demo-agents/src/register.ts` and start the
+  conductor with `VECTOR_HOT_WALLET_MNEMONIC` set (SDK wallet auto-activates). Local E2E already passes
+  (`node scripts/e2e-local.mjs`).
+- **M3 live swap**: `REFUEL_LIVE=true` + funded `BASE_HOT_WALLET_PK`, $5 first (manual by spec).
+- **M4 escrow**: Aiken toolchain + external audit before mainnet. **M5**: mainnet gate.
 
 ## Layout
 `apps/web` (Next.js 14), `services/{conductor,indexer,refuel-api}` (Fastify), `packages/{core,chain-vector,chain-base,x402,llm}`, `contracts/escrow` (Aiken, M4), `infra/` (compose + migrations), `examples/agents/` (demo agents).

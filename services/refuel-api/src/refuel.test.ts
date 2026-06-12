@@ -12,13 +12,13 @@ const PK = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" 
 const account = privateKeyToAccount(PK);
 const PAY_TO = "0x1111111111111111111111111111111111111111" as const;
 
-/** publicClient stub: getAmountsOut returns 2:1 bAP3X per USDC (18 vs 6 decimals) */
+/** publicClient stub: slipstream quoter returns 2:1 bAP3X per USDC (18 vs 6 decimals) */
 function stubPublicClient(): PublicClient {
   return {
     readContract: vi.fn(async (args: { functionName: string; args: readonly unknown[] }) => {
-      if (args.functionName === "getAmountsOut") {
-        const amountIn = args.args[0] as bigint;
-        return [amountIn, amountIn * 2n * 10n ** 12n];
+      if (args.functionName === "quoteExactInputSingle") {
+        const params = args.args[0] as { amountIn: bigint };
+        return [params.amountIn * 2n * 10n ** 12n, 0n, 0, 0n];
       }
       throw new Error(`unexpected readContract ${args.functionName}`);
     }),

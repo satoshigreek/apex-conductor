@@ -15,8 +15,14 @@ export interface ResolvedAgent {
 const ENDPOINT_TYPES = new Set(["mcp-sse", "https", "a2a"]);
 const PRICING_MODELS = new Set(["per_call", "per_token", "subscription"]);
 
-export async function resolveAgent(store: AgentStore, row: AgentRow): Promise<ResolvedAgent | null> {
+export interface ResolveOptions {
+  /** DEV ONLY (env ALLOW_UNVERIFIED_MANIFESTS) — trust manifests whose signature isn't verified yet */
+  trustUnverified?: boolean;
+}
+
+export async function resolveAgent(store: AgentStore, row: AgentRow, opts: ResolveOptions = {}): Promise<ResolvedAgent | null> {
   const manifest = await store.getManifest(row.agentId);
+  const manifestTrusted = manifest !== null && (manifest.verified || opts.trustUnverified === true);
 
   let endpoint: AgentProfile["endpoint"] | null = null;
   let endpointSource: ResolvedAgent["source"]["endpoint"] = "missing";
@@ -24,8 +30,8 @@ export async function resolveAgent(store: AgentStore, row: AgentRow): Promise<Re
     const type = row.endpointType && ENDPOINT_TYPES.has(row.endpointType) ? row.endpointType : "https";
     endpoint = { type: type as AgentProfile["endpoint"]["type"], url: row.endpointUrl };
     endpointSource = "datum";
-  } else if (manifest?.verified) {
-    endpoint = manifest.endpoint;
+  } else if (manifestTrusted) {
+    endpoint = manifest!.endpoint;
     endpointSource = "manifest";
   }
 
@@ -35,8 +41,8 @@ export async function resolveAgent(store: AgentStore, row: AgentRow): Promise<Re
     const model = row.pricingModel && PRICING_MODELS.has(row.pricingModel) ? row.pricingModel : "per_call";
     pricing = { model: model as AgentProfile["pricing"]["model"], amountAp3x: row.priceAp3x };
     pricingSource = "datum";
-  } else if (manifest?.verified) {
-    pricing = manifest.pricing;
+  } else if (manifestTrusted) {
+    pricing = manifest!.pricing;
     pricingSource = "manifest";
   }
 
@@ -59,11 +65,11 @@ export async function resolveAgent(store: AgentStore, row: AgentRow): Promise<Re
   return { profile: parsed.data, source: { endpoint: endpointSource, pricing: pricingSource }, row };
 }
 
-export async function resolveAll(store: AgentStore, filter?: { capability?: string }): Promise<ResolvedAgent[]> {
+export async function resolveAll(store: AgentStore, filter?: { capability?: string }, opts: ResolveOptions = {}): Promise<ResolvedAgent[]> {
   const rows = await store.listAgents(filter);
   const out: ResolvedAgent[] = [];
   for (const row of rows) {
-    const resolved = await resolveAgent(store, row);
+    const resolved = await resolveAgent(store, row, opts);
     if (resolved) out.push(resolved);
   }
   return out;
@@ -88,11 +94,11 @@ export interface CatalogEntry {
   source: ResolvedAgent["source"] | null;
 }
 
-export async function listCatalog(store: AgentStore, filter?: { capability?: string }): Promise<CatalogEntry[]> {
+export async function listCatalog(store: AgentStore, filter?: { capability?: string }, opts: ResolveOptions = {}): Promise<CatalogEntry[]> {
   const rows = await store.listAgents(filter);
   const out: CatalogEntry[] = [];
   for (const row of rows) {
-    const resolved = await resolveAgent(store, row);
+    const resolved = await resolveAgent(store, row, opts);
     if (resolved) {
       out.push({
         ...resolved.profile,

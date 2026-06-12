@@ -24,7 +24,7 @@ if (env.VERIFICATION_API) {
   setInterval(() => void syncReputation(store, env.VERIFICATION_API!, fetch, log), 10 * 60 * 1000);
 }
 
-const app = Fastify({ logger: false });
+const app = Fastify({ logger: false, maxParamLength: 256 });
 app.get("/health", async () => ({ ok: true, service: "indexer", network: env.VECTOR_NETWORK }));
 app.get("/agents", async (req) => {
   const { capability } = req.query as { capability?: string };
