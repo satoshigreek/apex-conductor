@@ -1,0 +1,29 @@
+# One-click conductor node on Render (free tier) — https://render.com/deploy
+# Free instances sleep after ~15 min idle and wake on the next request (cold start ~30s).
+services:
+  - type: web
+    name: apex-conductor
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm install --frozen-lockfile && pnpm build
+    startCommand: node services/conductor/dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: VECTOR_NETWORK
+        value: mainnet
+      - key: KOIOS_URL
+        value: https://koios.vector.apexfusion.org/api/v1
+      - key: DATABASE_URL
+        value: memory://
+      - key: QUEUE_DRIVER
+        value: memory
+      - key: ALLOW_UNVERIFIED_MANIFESTS
+        value: "false"
+      - key: ROUTER_MIN_STAKE_AP3X
+        value: "0"
+      - key: CONDUCTOR_PORT
+        fromService:
+          type: web
+          name: apex-conductor
+          envVarKey: PORT
+      # set ANTHROPIC_API_KEY (or VENICE_API_KEY) in the dashboard to enable real LLM planning

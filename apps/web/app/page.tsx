@@ -124,7 +124,12 @@ export default function ConductorPage() {
         {staticMode && (
           <div className="panel p-4 mt-4">
             <p className="eyebrow mb-2">
-              Conductor node {nodeSaved ? <span className="text-good">· connected: {nodeSaved}</span> : <span className="text-warn">· not connected</span>}
+              Conductor node{" "}
+              {nodeSaved ? (
+                <span className="text-good">· connected: {nodeSaved}</span>
+              ) : (
+                <span className="text-gold">· browser demo mode — 6 virtual agents on live public APIs</span>
+              )}
             </p>
             <div className="flex gap-2">
               <input
@@ -145,8 +150,9 @@ export default function ConductorPage() {
               </button>
             </div>
             <p className="font-mono text-[10px] text-ink-3 mt-2">
-              the static page can browse the registry and quote refuels by itself — conducting tasks runs on YOUR node
-              (keys, spend caps and payments stay server-side)
+              demo mode plans and executes in YOUR browser against live data (news · prices · bAP3X market · Vector chain ·
+              staking · registry) with a simulated AP3X ledger — connect a node for on-chain registry agents and real
+              payments (one-click deploy: see README)
             </p>
           </div>
         )}
@@ -297,6 +303,53 @@ function StepResult({ output }: { output: unknown }) {
   }
   if (o?.kind === "summary" && o.summary) {
     return <p className="font-body text-sm text-ink-2 leading-relaxed">{o.summary}</p>;
+  }
+  if (o?.kind === "price_quotes" && Array.isArray((o as { quotes?: unknown[] }).quotes)) {
+    const quotes = (o as { quotes: Array<{ asset: string; usd: number; change24h: number | null }>; source?: string }).quotes;
+    return (
+      <div className="font-body text-sm text-ink-2 space-y-1">
+        {quotes.map((q) => (
+          <p key={q.asset}>
+            {q.asset}: <span className="text-gold">${q.usd < 1 ? q.usd.toFixed(6) : q.usd.toLocaleString()}</span>
+            {q.change24h !== null && (
+              <span className={q.change24h >= 0 ? "text-good" : "text-warn"}> {q.change24h >= 0 ? "+" : ""}{q.change24h.toFixed(2)}% 24h</span>
+            )}
+          </p>
+        ))}
+        <p className="font-mono text-[10px] text-ink-3">source: {(o as { source?: string }).source}</p>
+      </div>
+    );
+  }
+  if (o?.kind === "market") {
+    const m = o as unknown as { pool: string; priceUsd: number; volume24hUsd: number; reserveUsd: number; change24hPct: number; fdvUsd: number; source: string };
+    return (
+      <div className="font-body text-sm text-ink-2 space-y-1">
+        <p>{m.pool}: <span className="text-gold">${m.priceUsd.toFixed(6)}</span>
+          <span className={m.change24hPct >= 0 ? "text-good" : "text-warn"}> {m.change24hPct >= 0 ? "+" : ""}{m.change24hPct.toFixed(2)}% 24h</span>
+        </p>
+        <p>24h volume ${Math.round(m.volume24hUsd).toLocaleString()} · liquidity ${Math.round(m.reserveUsd).toLocaleString()} · FDV ${Math.round(m.fdvUsd).toLocaleString()}</p>
+        <p className="font-mono text-[10px] text-ink-3">source: {m.source}</p>
+      </div>
+    );
+  }
+  if (o?.kind === "chain_stats") {
+    const c = o as unknown as { chain: string; blockHeight: number; epoch: number; supplyAp3x: number | null; circulatingAp3x: number | null; lastBlock: string };
+    return (
+      <div className="font-body text-sm text-ink-2 space-y-1">
+        <p>{c.chain} · block <span className="text-gold">{c.blockHeight.toLocaleString()}</span> · epoch {c.epoch}</p>
+        {c.supplyAp3x && <p>supply {Math.round(c.supplyAp3x).toLocaleString()} AP3X{c.circulatingAp3x ? ` · circulating ${Math.round(c.circulatingAp3x).toLocaleString()}` : ""}</p>}
+        <p className="font-mono text-[10px] text-ink-3">last block {new Date(c.lastBlock).toLocaleString()}</p>
+      </div>
+    );
+  }
+  if (o?.kind === "registry_stats") {
+    const r = o as unknown as { totalAgents: number; registeredLast7d: number; note: string };
+    return (
+      <div className="font-body text-sm text-ink-2 space-y-1">
+        <p><span className="text-gold">{r.totalAgents}</span> agents on the registry · {r.registeredLast7d} new in 7d</p>
+        <p className="font-mono text-[10px] text-ink-3">{r.note}</p>
+      </div>
+    );
   }
   if (o?.kind === "price_quote") {
     return (

@@ -72,7 +72,13 @@ function conductorBase(): string {
   return "/api/conductor";
 }
 
+const browserMode = () => isStaticMode() && !getNodeUrl();
+
 export async function submitIntent(prompt: string, budgetAp3x: number, mode: "auto" | "confirm"): Promise<{ taskId: string }> {
+  if (browserMode()) {
+    const { conductInBrowser } = await import("./browser-conductor");
+    return conductInBrowser(prompt, budgetAp3x);
+  }
   const res = await fetch(`${conductorBase()}/v1/intents`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -83,6 +89,12 @@ export async function submitIntent(prompt: string, budgetAp3x: number, mode: "au
 }
 
 export async function getTask(taskId: string): Promise<TaskView> {
+  if (browserMode()) {
+    const { getBrowserTask } = await import("./browser-conductor");
+    const view = getBrowserTask(taskId);
+    if (!view) throw new Error("task not found in this browser");
+    return view;
+  }
   const res = await fetch(`${conductorBase()}/v1/tasks/${taskId}`);
   if (!res.ok) throw new Error(`task fetch failed: ${res.status}`);
   return res.json();

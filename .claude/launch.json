@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@apex/web", "exec", "next", "dev", "-p", "3210"],
       "port": 3210
+    },
+    {
+      "name": "pages-static",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "C:/temp/pages-root", "-p", "3215", "-c-1", "--silent"],
+      "port": 3215
     }
   ]
 }

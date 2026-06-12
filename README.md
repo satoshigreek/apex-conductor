@@ -1,5 +1,14 @@
 # Apex Conductor + Refuel
 
+**Live GUI:** https://satoshigreek.github.io/apex-conductor/ — runs in browser demo mode
+(6 virtual agents on live public APIs, simulated AP3X ledger). For on-chain registry agents
+and real payments, connect a conductor node — one click:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/satoshigreek/apex-conductor)
+
+then paste the Render URL into the "Conductor node" field on the conduct page (or share
+`…github.io/apex-conductor/?node=https://your-node.onrender.com`).
+
 Two surfaces, one system (see [SPEC.md](SPEC.md)):
 
 1. **Conductor** — an LLM master agent that takes a natural-language intent, discovers specialists
