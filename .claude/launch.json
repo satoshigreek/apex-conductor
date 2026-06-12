@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@apex/web", "exec", "next", "dev", "-p", "3210"],
+      "port": 3210
+    }
+  ]
+}
