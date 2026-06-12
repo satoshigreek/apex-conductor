@@ -5,6 +5,7 @@ import { createStore, listCatalog, resolveAll, startPolling, startProbing } from
 import { MemoryTaskStore } from "./taskstore.js";
 import { Orchestrator } from "./orchestrator.js";
 import { StubChainTools } from "./executor.js";
+import { McpChainTools } from "./chaintools.js";
 import { buildServer } from "./server.js";
 import { registerMcp } from "./mcp.js";
 
@@ -78,7 +79,7 @@ const orchestrator: Orchestrator = new Orchestrator({
   catalog,
   planner: provider ? { provider, model: env.PLANNER_MODEL } : null,
   worker: provider ? { provider, workerModel: env.WORKER_MODEL } : null,
-  chainTools: new StubChainTools(),
+  chainTools: env.MCP_SERVER_URL ? new McpChainTools(env.MCP_SERVER_URL, log) : new StubChainTools(),
   treasuryAddr: env.PROTOCOL_TREASURY_ADDR ?? null,
   perTaskCapAp3x: env.PER_TASK_CAP_AP3X,
   enqueue:

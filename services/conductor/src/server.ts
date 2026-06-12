@@ -4,6 +4,7 @@ import { z } from "zod";
 import { TaskModeSchema } from "@apex/core";
 import { AgentManifestSchema } from "@apex/core";
 import type { AgentStore, CatalogEntry } from "@apex/indexer";
+import { verifyManifest } from "./manifest-verify.js";
 import type { Orchestrator } from "./orchestrator.js";
 import type { TaskStore } from "./taskstore.js";
 
@@ -154,9 +155,9 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
   /**
    * SPEC §4.1 / BLOCKER-3 — operators POST a signed manifest filling the datum's
-   * endpoint/pricing gap. TODO(M2): verify the CIP-8/Ed25519 signature against the
-   * agent's ownerPkh (needs cardano crypto libs); until then manifests persist
-   * UNVERIFIED and are not routable.
+   * endpoint/pricing gap. Signature = CIP-30 signData over manifestMessage() with the
+   * key owning the registry UTxO; verified ⇔ COSE valid AND blake2b-224(pubkey) == ownerPkh.
+   * Unverified manifests persist but are only routable with ALLOW_UNVERIFIED_MANIFESTS (dev).
    */
   app.post("/v1/agents/:agentId/manifest", async (req, reply) => {
     if (authenticate(req, reply) === "denied") return;
@@ -165,11 +166,19 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
     if (!body.success) return reply.code(400).send({ error: body.error.issues });
     const agent = await deps.agentStore.getAgent(agentId);
     if (!agent) return reply.code(404).send({ error: "agent not indexed (is it on the registry?)" });
-    await deps.agentStore.upsertManifest({ ...body.data, verified: false });
+
+    const verification = verifyManifest(body.data, agent.ownerPkh ?? "");
+    await deps.agentStore.upsertManifest({ ...body.data, verified: verification.valid });
     return reply.code(202).send({
       ok: true,
-      verified: false,
-      note: "manifest stored; signature verification against ownerPkh pending (TODO M2) — unverified manifests are not routable",
+      verified: verification.valid,
+      ...(verification.valid
+        ? {}
+        : {
+            reason: verification.reason,
+            signerPkh: verification.signerPkh,
+            note: "manifest stored UNVERIFIED — not routable (dev override: ALLOW_UNVERIFIED_MANIFESTS). Sign manifestMessage() via CIP-30 signData with the agent's owner key.",
+          }),
     });
   });
 

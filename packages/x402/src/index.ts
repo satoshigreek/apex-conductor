@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { ADDRESSES, verifyTransferAuthorization, type SignedAuthorization } from "@apex/chain-base";
 
+export * from "./v2.js";
+
 /**
  * x402 helpers (SPEC §5.3): HTTP 402 challenge, X-PAYMENT header verify, facilitator settle.
  * Challenge shape and EIP-3009 payload format follow the spec verbatim.

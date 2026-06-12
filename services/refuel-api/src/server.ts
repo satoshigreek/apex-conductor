@@ -1,6 +1,15 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { z } from "zod";
-import { buildChallenge, settleWithFacilitator, verifyPaymentHeader, decodePaymentHeader } from "@apex/x402";
+import {
+  buildChallenge,
+  buildChallengeV2,
+  buildRequirementsV2,
+  decodePaymentHeader,
+  settleWithFacilitator,
+  settleWithFacilitatorV2,
+  v1HeaderToV2Payload,
+  verifyPaymentHeader,
+} from "@apex/x402";
 import type { RefuelDeps, RefuelRequest } from "./refuel.js";
 import { executeRefuel } from "./refuel.js";
 
@@ -9,6 +18,12 @@ export interface RefuelServerDeps {
   refuel: RefuelDeps;
   payTo: `0x${string}` | null;
   facilitatorUrl: string;
+  /**
+   * Facilitator protocol. SPEC §5.3 fixes v1, but the live x402.org facilitator speaks
+   * x402Version 2 (BLOCKER-6) — default v2; the inbound X-PAYMENT header stays v1 and is
+   * upgraded via v1HeaderToV2Payload.
+   */
+  protocol?: "v1" | "v2";
   /** USDC base units per 1 AP3X of gas credit (pricing knob; ops-tunable) */
   usdcPerAp3x: number;
   maxTopupUsdc: string;
@@ -50,13 +65,20 @@ export function buildRefuelServer(deps: RefuelServerDeps): FastifyInstance {
     const body = TopupBody.safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: body.error.issues });
 
+    const protocol = deps.protocol ?? "v2";
     const header = req.headers["x-payment"];
     if (typeof header !== "string" || header.length === 0) {
-      // SPEC §5.3: 402 challenge
+      // 402 challenge — v1 shape per SPEC §5.3, v2 per the live facilitator (BLOCKER-6)
+      if (protocol === "v1") {
+        return reply.code(402).send(
+          buildChallenge({ maxAmountRequired: deps.maxTopupUsdc, resource: "/v1/gas/topup", payTo: deps.payTo }),
+        );
+      }
       return reply.code(402).send(
-        buildChallenge({
-          maxAmountRequired: deps.maxTopupUsdc,
-          resource: "/v1/gas/topup",
+        buildChallengeV2({
+          amount: deps.maxTopupUsdc,
+          resourceUrl: "/v1/gas/topup",
+          description: "Vector gas top-up (AP3X credit)",
           payTo: deps.payTo,
         }),
       );
@@ -69,7 +91,23 @@ export function buildRefuelServer(deps: RefuelServerDeps): FastifyInstance {
     if (usedNonces.has(nonce)) return reply.code(409).send({ error: "authorization nonce already used" });
 
     const payment = decodePaymentHeader(header);
-    const settled = await settleWithFacilitator(deps.facilitatorUrl, payment, deps.fetchImpl ?? fetch);
+    let settled: { success: boolean; txHash?: string; error?: string };
+    if (protocol === "v1") {
+      settled = await settleWithFacilitator(deps.facilitatorUrl, payment, deps.fetchImpl ?? fetch);
+    } else {
+      const requirements = buildRequirementsV2({
+        amount: payment.payload.authorization.value,
+        resourceUrl: "/v1/gas/topup",
+        payTo: deps.payTo,
+      });
+      const out = await settleWithFacilitatorV2(
+        deps.facilitatorUrl,
+        v1HeaderToV2Payload(payment, requirements, { url: "/v1/gas/topup" }),
+        requirements,
+        deps.fetchImpl ?? fetch,
+      );
+      settled = { success: out.success, txHash: out.txHash, error: out.errorReason };
+    }
     if (!settled.success) return reply.code(502).send({ error: `settlement failed: ${settled.error}` });
     usedNonces.add(nonce);
 

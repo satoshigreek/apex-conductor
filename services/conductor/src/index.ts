@@ -4,5 +4,7 @@ export * from "./verifier.js";
 export * from "./payments.js";
 export * from "./executor.js";
 export * from "./orchestrator.js";
+export * from "./chaintools.js";
+export * from "./manifest-verify.js";
 export * from "./queue.js";
 export { buildServer } from "./server.js";

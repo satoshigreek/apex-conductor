@@ -30,6 +30,7 @@ const app = buildRefuelServer({
   },
   payTo: (env.REFUEL_PAYTO as `0x${string}` | undefined) ?? null,
   facilitatorUrl: env.X402_FACILITATOR_URL,
+  protocol: env.X402_PROTOCOL,
   usdcPerAp3x: 0.01, // ops pricing knob: 1 USDC = 100 AP3X gas credit until live quotes wire in
   maxTopupUsdc: "100000000", // 100 USDC cap per x402 call
 });

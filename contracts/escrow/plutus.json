@@ -1,0 +1,107 @@
+{
+  "preamble": {
+    "title": "apex/escrow",
+    "description": "Apex Conductor per-task escrow validator (SPEC §5.2 Payments v2)",
+    "version": "0.1.0",
+    "plutusVersion": "v3",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.1.21+42babe5"
+    },
+    "license": "Apache-2.0"
+  },
+  "validators": [
+    {
+      "title": "escrow.escrow.spend",
+      "datum": {
+        "title": "datum",
+        "schema": {
+          "$ref": "#/definitions/escrow~1EscrowDatum"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/escrow~1EscrowRedeemer"
+        }
+      },
+      "compiledCode": "5902cf01010029800aba2aba1aba0aab9faab9eaab9dab9a488888896600264653001300800198041804800cdc3a400530080024888966002600460106ea800e2653001300d00198069807000cdc3a400091119912cc004c00c0062b3001300f37540150028b20208acc004c0200062b3001300f37540150028b20208acc004cdc3a400800315980098079baa00a80145901045900d201a40342b30013001300c375400519800980818069baa00291808980918091809000c8c044c0480064464660020026eb0c04cc050c050c050c050c050c050c050c050c040dd5001912cc00400629422b30013371e6eb8c05000400e2946266004004602a00280790124c030dd500448c044c048c04800646022602460246024602460246024602400291111112cc004c02000e2b30013300400c375c600a60286ea801e2b300132598009807180a1baa001899b89375a6030602a6ea8004dd69801980a9baa0088a50404c602e60286ea8c014c050dd51800980a1baa00c8992cc004c024c050dd5000c4c8c8cc004004dd61802980b9baa00f2259800800c528c56600264b30013375e603860326ea8004012266ebcc01cc064dd500099ba548010cc06c0312f5c114a280b8c06c006266004004603800314a080b1019180c180a9baa3006301537546030602a6ea80062c8098c8cc004004dd6180c180a9baa00d2259800800c5300103d87a80008992cc004cdd7980d180b9baa00100d899ba548000cc0640052f5c1133003003301b0024054603200280ba2941012452820248acc004c03400e2b30013300400c375c600c60286ea801e264b3001300e301437540031337106eb4c00cc054dd50041bad30183015375400314a08098c05cc050dd5180b980a1baa30013014375401914a080922b30013300400c375c600a60286ea801e2660080186eb8c018c050dd5003c52820244048809116402c60186ea802060126ea800e2c8038601000260066ea802229344d95900101",
+      "hash": "095e723251ca846bb663acc6f0886ecb0f25c4ceb607d39f0a7a7b13"
+    },
+    {
+      "title": "escrow.escrow.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5902cf01010029800aba2aba1aba0aab9faab9eaab9dab9a488888896600264653001300800198041804800cdc3a400530080024888966002600460106ea800e2653001300d00198069807000cdc3a400091119912cc004c00c0062b3001300f37540150028b20208acc004c0200062b3001300f37540150028b20208acc004cdc3a400800315980098079baa00a80145901045900d201a40342b30013001300c375400519800980818069baa00291808980918091809000c8c044c0480064464660020026eb0c04cc050c050c050c050c050c050c050c050c040dd5001912cc00400629422b30013371e6eb8c05000400e2946266004004602a00280790124c030dd500448c044c048c04800646022602460246024602460246024602400291111112cc004c02000e2b30013300400c375c600a60286ea801e2b300132598009807180a1baa001899b89375a6030602a6ea8004dd69801980a9baa0088a50404c602e60286ea8c014c050dd51800980a1baa00c8992cc004c024c050dd5000c4c8c8cc004004dd61802980b9baa00f2259800800c528c56600264b30013375e603860326ea8004012266ebcc01cc064dd500099ba548010cc06c0312f5c114a280b8c06c006266004004603800314a080b1019180c180a9baa3006301537546030602a6ea80062c8098c8cc004004dd6180c180a9baa00d2259800800c5300103d87a80008992cc004cdd7980d180b9baa00100d899ba548000cc0640052f5c1133003003301b0024054603200280ba2941012452820248acc004c03400e2b30013300400c375c600c60286ea801e264b3001300e301437540031337106eb4c00cc054dd50041bad30183015375400314a08098c05cc050dd5180b980a1baa30013014375401914a080922b30013300400c375c600a60286ea801e2660080186eb8c018c050dd5003c52820244048809116402c60186ea802060126ea800e2c8038601000260066ea802229344d95900101",
+      "hash": "095e723251ca846bb663acc6f0886ecb0f25c4ceb607d39f0a7a7b13"
+    }
+  ],
+  "definitions": {
+    "ByteArray": {
+      "dataType": "bytes"
+    },
+    "Int": {
+      "dataType": "integer"
+    },
+    "aiken/crypto/VerificationKeyHash": {
+      "title": "VerificationKeyHash",
+      "dataType": "bytes"
+    },
+    "escrow/EscrowDatum": {
+      "title": "EscrowDatum",
+      "anyOf": [
+        {
+          "title": "EscrowDatum",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "task_id",
+              "description": "Conductor task id (UUID bytes) — one escrow UTxO per task",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "conductor",
+              "description": "key allowed to release agent fees before the deadline",
+              "$ref": "#/definitions/aiken~1crypto~1VerificationKeyHash"
+            },
+            {
+              "title": "deadline",
+              "description": "POSIX time (ms): releases stop, refunds start",
+              "$ref": "#/definitions/Int"
+            },
+            {
+              "title": "refund",
+              "description": "key allowed to reclaim after the deadline",
+              "$ref": "#/definitions/aiken~1crypto~1VerificationKeyHash"
+            }
+          ]
+        }
+      ]
+    },
+    "escrow/EscrowRedeemer": {
+      "title": "EscrowRedeemer",
+      "anyOf": [
+        {
+          "title": "Release",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": []
+        },
+        {
+          "title": "Refund",
+          "dataType": "constructor",
+          "index": 1,
+          "fields": []
+        },
+        {
+          "title": "Dispute",
+          "dataType": "constructor",
+          "index": 2,
+          "fields": []
+        }
+      ]
+    }
+  }
+}

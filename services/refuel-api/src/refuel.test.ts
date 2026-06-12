@@ -76,7 +76,7 @@ describe("gas ledger", () => {
 });
 
 describe("x402 topup endpoint (§5.3 server)", () => {
-  function makeApp(fetchImpl: typeof fetch) {
+  function makeApp(fetchImpl: typeof fetch, protocol: "v1" | "v2" = "v1") {
     return buildRefuelServer({
       refuel: {
         publicClient: stubPublicClient(),
@@ -88,6 +88,7 @@ describe("x402 topup endpoint (§5.3 server)", () => {
       },
       payTo: PAY_TO,
       facilitatorUrl: "https://facilitator.example",
+      protocol,
       usdcPerAp3x: 0.01,
       maxTopupUsdc: "100000000",
       fetchImpl,
@@ -137,6 +138,43 @@ describe("x402 topup endpoint (§5.3 server)", () => {
       payload: { vectorAddress: "vector_addr1" },
     });
     expect(replay.statusCode).toBe(409);
+  });
+
+  it("v2 (BLOCKER-6): challenge is PaymentRequired shape; settle sends the v2 envelope", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(url)).toBe("https://facilitator.example/settle");
+      const body = JSON.parse(String(init?.body));
+      // live-confirmed v2 envelope: {paymentPayload:{x402Version:2, accepted, payload}, paymentRequirements}
+      expect(body.paymentPayload.x402Version).toBe(2);
+      expect(body.paymentPayload.accepted).toEqual(body.paymentRequirements);
+      expect(body.paymentRequirements).toMatchObject({
+        scheme: "exact",
+        network: "eip155:8453",
+        amount: "5000000",
+        payTo: PAY_TO,
+        extra: { name: "USD Coin", version: "2" },
+      });
+      expect(body.paymentPayload.payload.signature).toMatch(/^0x/);
+      return new Response(JSON.stringify({ success: true, transaction: "0xv2settle" }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const app = makeApp(fetchImpl, "v2");
+
+    const challenge = await app.inject({ method: "POST", url: "/v1/gas/topup", payload: { vectorAddress: "vector_addr1" } });
+    expect(challenge.statusCode).toBe(402);
+    expect(challenge.json()).toMatchObject({
+      x402Version: 2,
+      resource: { url: "/v1/gas/topup" },
+      accepts: [{ scheme: "exact", network: "eip155:8453", payTo: PAY_TO }],
+    });
+
+    const paid = await app.inject({
+      method: "POST",
+      url: "/v1/gas/topup",
+      headers: { "x-payment": await makeHeader("cc") },
+      payload: { vectorAddress: "vector_addr1" },
+    });
+    expect(paid.statusCode).toBe(200);
+    expect(paid.json()).toMatchObject({ ok: true, settleTx: "0xv2settle", creditedAp3x: 500 });
   });
 
   it("rejects invalid signatures with 402", async () => {

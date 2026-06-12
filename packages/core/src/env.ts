@@ -37,6 +37,8 @@ export const EnvSchema = z.object({
   SKYLINE_API: z.string().optional(),
   REACTOR_API: z.string().optional(),
   X402_FACILITATOR_URL: z.string().url().default("https://x402.org/facilitator"),
+  /** BLOCKER-6: live x402.org facilitator speaks v2; v1 kept for spec-pinned deployments */
+  X402_PROTOCOL: z.enum(["v1", "v2"]).default("v2"),
   REFUEL_LIVE: z
     .string()
     .default("false")
@@ -47,6 +49,8 @@ export const EnvSchema = z.object({
     .string()
     .default("false")
     .transform((v) => v === "true"),
+  /** Vector MCP server (Apex-Fusion/mcp-server) SSE endpoint; unset = stub chain tools */
+  MCP_SERVER_URL: z.string().url().optional(),
   DATABASE_URL: z.string().default("memory://"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   QUEUE_DRIVER: z.enum(["bullmq", "memory"]).default("memory"),

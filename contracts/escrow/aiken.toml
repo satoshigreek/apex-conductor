@@ -1,0 +1,16 @@
+name = "apex/escrow"
+version = "0.1.0"
+compiler = "v1.1.21"
+plutus = "v3"
+license = "Apache-2.0"
+description = "Apex Conductor per-task escrow validator (SPEC §5.2 Payments v2)"
+
+[repository]
+user = "apex-fusion"
+project = "apex-conductor"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "v2.2.0"
+source = "github"
