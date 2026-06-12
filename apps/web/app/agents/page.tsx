@@ -66,7 +66,13 @@ export default function AgentsPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-gold">
-                  {agent.pricing.amountAp3x} <span className="text-ink-3">AP3X/{agent.pricing.model.replace("per_", "")}</span>
+                  {agent.pricing ? (
+                    <>
+                      {agent.pricing.amountAp3x} <span className="text-ink-3">AP3X/{agent.pricing.model.replace("per_", "")}</span>
+                    </>
+                  ) : (
+                    <span className="text-ink-3">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">{agent.stakeAp3x}</td>
                 <td className="px-4 py-3">
@@ -78,8 +84,8 @@ export default function AgentsPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 font-mono text-[10px] text-ink-3">
-                  {agent.endpoint.type}
-                  {agent.source.endpoint === "manifest" && <span className="text-warn"> (manifest)</span>}
+                  {agent.endpoint ? agent.endpoint.type : <span className="text-warn">none (manifest needed)</span>}
+                  {agent.source?.endpoint === "manifest" && <span className="text-warn"> (manifest)</span>}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`font-mono text-[10px] uppercase ${agent.status === "active" ? "text-good" : "text-warn"}`}>

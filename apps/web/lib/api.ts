@@ -48,12 +48,13 @@ export interface AgentView {
   agentId: string;
   name: string;
   capabilities: string[];
-  endpoint: { type: string; url: string };
-  pricing: { model: string; amountAp3x: number };
+  endpoint: { type: string; url: string } | null;
+  pricing: { model: string; amountAp3x: number } | null;
   stakeAp3x: number;
   reputation: { score: number; tasks: number; disputes: number };
   status: string;
-  source: { endpoint: string; pricing: string };
+  routable: boolean;
+  source: { endpoint: string; pricing: string } | null;
 }
 
 const CONDUCTOR = "/api/conductor";

@@ -91,11 +91,9 @@ async function main() {
         "`AgentProfileResolver` merges on-chain datums with signed off-chain manifests " +
         "(`agent_manifests` table; operators POST a manifest whose signature verifies against `ownerPkh`). " +
         "Cross-check the authoritative datum schema in `Apex-Fusion/vector-ai-agents` `DEPLOY.md` and refine " +
-        "`packages/chain-vector/src/plutus.ts → decodeAgentDatum` accordingly.",
-    "**BLOCKER-3 NOT confirmed** — datums carry endpoint+pricing; the manifest fallback stays as a redundancy path.",
+        "`packages/chain-vector/src/plutus.ts → decodeAgentDatum` accordingly."
+      : "**BLOCKER-3 NOT confirmed** — datums carry endpoint+pricing; the manifest fallback stays as a redundancy path.",
   );
-  if (!blocker3Confirmed) lines.splice(lines.length - 2, 1); // keep only the matching verdict line
-  else lines.splice(lines.length - 1, 1);
 
   mkdirSync(join(root, "docs"), { recursive: true });
   const out = join(root, "docs", "datum-audit.md");

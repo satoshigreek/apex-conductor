@@ -1,7 +1,7 @@
 import { loadEnv, DEFAULT_POLICY, type SpendPolicy } from "@apex/core";
 import { KoiosClient, MockVectorWallet } from "@apex/chain-vector";
 import { createProvider, type LlmProvider } from "@apex/llm";
-import { createStore, resolveAll, startPolling, startProbing } from "@apex/indexer";
+import { createStore, listCatalog, resolveAll, startPolling, startProbing } from "@apex/indexer";
 import { MemoryTaskStore } from "./taskstore.js";
 import { Orchestrator } from "./orchestrator.js";
 import { StubChainTools } from "./executor.js";
@@ -85,7 +85,8 @@ let queue: import("./queue.js").BullMqTaskQueue | null = null;
 const app = buildServer({
   orchestrator,
   store: taskStore,
-  resolveAgents: (capability) => resolveAll(agentStore, capability ? { capability } : undefined),
+  agentStore,
+  resolveAgents: (capability) => listCatalog(agentStore, capability ? { capability } : undefined),
   apiKeys: (process.env.CONDUCTOR_API_KEYS ?? "").split(",").filter(Boolean),
 });
 registerMcp(app, orchestrator, taskStore);

@@ -70,6 +70,30 @@ const isUrl = (s: string) => /^https?:\/\//.test(s) || /^wss?:\/\//.test(s);
 const looksLikePkh = (s: string) => /^(0x)?[0-9a-f]{56,64}$/i.test(s);
 const stripHexPrefix = (s: string) => (s.startsWith("0x") ? s.slice(2) : s);
 
+/**
+ * Confirmed LIVE registry shape (docs/datum-audit.md, Vector mainnet epoch 290, 782 agents):
+ *   Constr0 [ Constr0[ownerPkh·bytes], name·utf8, description·utf8,
+ *             capabilities·list<utf8>, framework·utf8, endpoint·bytes (EMPTY on-chain → BLOCKER-3),
+ *             registeredAt·ms ]
+ * Positional decode below targets that shape first; map/heuristic passes cover variants.
+ */
+function decodePositionalRegistryShape(decoded: Decoded, out: RawAgentDatum): boolean {
+  if (decoded === null || typeof decoded !== "object" || Array.isArray(decoded) || decoded instanceof Map) return false;
+  if (decoded.tag !== 0 || decoded.values.length < 4) return false;
+  const v = decoded.values;
+  const owner = v[0];
+  if (owner === null || typeof owner !== "object" || Array.isArray(owner) || owner instanceof Map) return false;
+  const pkh = owner.values[0];
+  if (typeof pkh !== "string" || typeof v[1] !== "string" || !Array.isArray(v[3])) return false;
+
+  out.ownerPkh = stripHexPrefix(pkh);
+  out.name = v[1];
+  out.capabilities = v[3].filter((x): x is string => typeof x === "string");
+  // v[4] is the framework slot (e.g. "claude-code") — kept in the decoded tree, not an endpoint type
+  if (typeof v[5] === "string" && isUrl(v[5])) out.endpointUrl = v[5]; // reserved slot, empty on-chain today
+  return true;
+}
+
 /** Walk the decoded tree and pattern-match likely fields. Refined per docs/datum-audit.md. */
 export function decodeAgentDatum(inlineDatumValue: unknown): RawAgentDatum {
   const decoded = decodePlutus(inlineDatumValue);
@@ -84,6 +108,8 @@ export function decodeAgentDatum(inlineDatumValue: unknown): RawAgentDatum {
     ownerPkh: null,
     decoded: decodedToJson(decoded),
   };
+
+  if (decodePositionalRegistryShape(decoded, out)) return out;
 
   const strings: string[] = [];
   const ints: bigint[] = [];

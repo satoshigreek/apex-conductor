@@ -4,7 +4,7 @@ import { KoiosClient } from "@apex/chain-vector";
 import { createStore } from "./store/index.js";
 import { startPolling } from "./poller.js";
 import { startProbing, syncReputation } from "./prober.js";
-import { resolveAll } from "./resolver.js";
+import { listCatalog } from "./resolver.js";
 
 const env = loadEnv();
 const store = createStore(env.DATABASE_URL);
@@ -28,8 +28,7 @@ const app = Fastify({ logger: false });
 app.get("/health", async () => ({ ok: true, service: "indexer", network: env.VECTOR_NETWORK }));
 app.get("/agents", async (req) => {
   const { capability } = req.query as { capability?: string };
-  const resolved = await resolveAll(store, capability ? { capability } : undefined);
-  return resolved.map((r) => ({ ...r.profile, source: r.source, status: r.row.status }));
+  return listCatalog(store, capability ? { capability } : undefined);
 });
 
 const close = async () => {

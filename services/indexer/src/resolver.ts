@@ -68,3 +68,56 @@ export async function resolveAll(store: AgentStore, filter?: { capability?: stri
   }
   return out;
 }
+
+/**
+ * Full catalog listing for GET /v1/agents — includes agents the live datum leaves
+ * unroutable (no endpoint, BLOCKER-3); the router itself only sees resolveAll().
+ */
+export interface CatalogEntry {
+  agentId: string;
+  name: string;
+  capabilities: string[];
+  endpoint: { type: string; url: string } | null;
+  pricing: { model: string; amountAp3x: number } | null;
+  stakeAp3x: number;
+  ownerPkh: string;
+  registeredTx: string;
+  reputation: { score: number; tasks: number; disputes: number };
+  status: string;
+  routable: boolean;
+  source: ResolvedAgent["source"] | null;
+}
+
+export async function listCatalog(store: AgentStore, filter?: { capability?: string }): Promise<CatalogEntry[]> {
+  const rows = await store.listAgents(filter);
+  const out: CatalogEntry[] = [];
+  for (const row of rows) {
+    const resolved = await resolveAgent(store, row);
+    if (resolved) {
+      out.push({
+        ...resolved.profile,
+        endpoint: resolved.profile.endpoint,
+        pricing: resolved.profile.pricing,
+        status: row.status,
+        routable: true,
+        source: resolved.source,
+      });
+    } else {
+      out.push({
+        agentId: row.agentId,
+        name: row.name ?? row.agentId,
+        capabilities: row.capabilities,
+        endpoint: null,
+        pricing: row.priceAp3x !== null ? { model: row.pricingModel ?? "per_call", amountAp3x: row.priceAp3x } : null,
+        stakeAp3x: row.stakeAp3x ?? 0,
+        ownerPkh: row.ownerPkh ?? "",
+        registeredTx: row.registeredTx ?? "",
+        reputation: { score: row.reputation, tasks: row.repTasks, disputes: row.repDisputes },
+        status: row.status,
+        routable: false,
+        source: null,
+      });
+    }
+  }
+  return out;
+}

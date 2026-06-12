@@ -2,7 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { TaskModeSchema } from "@apex/core";
-import type { ResolvedAgent } from "@apex/indexer";
+import { AgentManifestSchema } from "@apex/core";
+import type { AgentStore, CatalogEntry } from "@apex/indexer";
 import type { Orchestrator } from "./orchestrator.js";
 import type { TaskStore } from "./taskstore.js";
 
@@ -10,7 +11,8 @@ import type { TaskStore } from "./taskstore.js";
 export interface ServerDeps {
   orchestrator: Orchestrator;
   store: TaskStore;
-  resolveAgents: (capability?: string) => Promise<ResolvedAgent[]>;
+  agentStore: AgentStore;
+  resolveAgents: (capability?: string) => Promise<CatalogEntry[]>;
   /** "key" or "key:webhookUrl", comma-separated (dev). Empty list = open dev mode. */
   apiKeys: string[];
   rateLimitPerMinute?: number;
@@ -146,8 +148,28 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   app.get("/v1/agents", async (req, reply) => {
     if (authenticate(req, reply) === "denied") return;
     const { capability } = req.query as { capability?: string };
-    const resolved = await deps.resolveAgents(capability);
-    return resolved.map((r) => ({ ...r.profile, source: r.source, status: r.row.status }));
+    return deps.resolveAgents(capability);
+  });
+
+  /**
+   * SPEC §4.1 / BLOCKER-3 — operators POST a signed manifest filling the datum's
+   * endpoint/pricing gap. TODO(M2): verify the CIP-8/Ed25519 signature against the
+   * agent's ownerPkh (needs cardano crypto libs); until then manifests persist
+   * UNVERIFIED and are not routable.
+   */
+  app.post("/v1/agents/:agentId/manifest", async (req, reply) => {
+    if (authenticate(req, reply) === "denied") return;
+    const { agentId } = req.params as { agentId: string };
+    const body = AgentManifestSchema.safeParse({ ...(req.body as object), agentId });
+    if (!body.success) return reply.code(400).send({ error: body.error.issues });
+    const agent = await deps.agentStore.getAgent(agentId);
+    if (!agent) return reply.code(404).send({ error: "agent not indexed (is it on the registry?)" });
+    await deps.agentStore.upsertManifest({ ...body.data, verified: false });
+    return reply.code(202).send({
+      ok: true,
+      verified: false,
+      note: "manifest stored; signature verification against ownerPkh pending (TODO M2) — unverified manifests are not routable",
+    });
   });
 
   return app;
