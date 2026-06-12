@@ -57,10 +57,13 @@ export interface AgentView {
   source: { endpoint: string; pricing: string } | null;
 }
 
+import { fetchCatalogStatic, isStaticMode, quoteRefuelStatic, STATIC_MODE_HINT } from "./static-mode";
+
 const CONDUCTOR = "/api/conductor";
 const REFUEL = "/api/refuel";
 
 export async function submitIntent(prompt: string, budgetAp3x: number, mode: "auto" | "confirm"): Promise<{ taskId: string }> {
+  if (isStaticMode()) throw new Error(STATIC_MODE_HINT);
   const res = await fetch(`${CONDUCTOR}/v1/intents`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -86,6 +89,7 @@ export async function approveTask(taskId: string, stepId?: string): Promise<void
 }
 
 export async function listAgents(capability?: string): Promise<AgentView[]> {
+  if (isStaticMode()) return fetchCatalogStatic(capability);
   const res = await fetch(`${CONDUCTOR}/v1/agents${capability ? `?capability=${encodeURIComponent(capability)}` : ""}`);
   if (!res.ok) throw new Error(`agents fetch failed: ${res.status}`);
   return res.json();
@@ -101,6 +105,7 @@ export interface RefuelQuoteResult {
 }
 
 export async function requestRefuel(usdcAmount: number, vectorAddress: string, maxSlippageBps = 100): Promise<RefuelQuoteResult> {
+  if (isStaticMode()) return quoteRefuelStatic(usdcAmount, maxSlippageBps);
   const res = await fetch(`${REFUEL}/v1/refuel`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -111,6 +116,7 @@ export async function requestRefuel(usdcAmount: number, vectorAddress: string, m
 }
 
 export async function gasBalance(vectorAddress: string): Promise<number> {
+  if (isStaticMode()) return 0; // gas ledger lives on the refuel service
   const res = await fetch(`${REFUEL}/v1/gas/${encodeURIComponent(vectorAddress)}`);
   if (!res.ok) return 0;
   return (await res.json()).balanceAp3x ?? 0;
