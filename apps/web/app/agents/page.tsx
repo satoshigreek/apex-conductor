@@ -3,11 +3,28 @@
 import { useEffect, useState } from "react";
 import { listAgents, type AgentView } from "@/lib/api";
 
+/** registry smoke/lifecycle test entries — real on-chain, but noise for the marketplace */
+const TEST_AGENT_PATTERN = /smoke|juror|sybil|lifecycle|test_/i;
+
+function isShowcase(agent: AgentView): boolean {
+  if (agent.routable) return true;
+  if (TEST_AGENT_PATTERN.test(agent.name)) return false;
+  return agent.capabilities.length > 0;
+}
+
+/** routable first, then named+capable, richest capability sets up front */
+function rank(a: AgentView, b: AgentView): number {
+  if (a.routable !== b.routable) return a.routable ? -1 : 1;
+  if (a.capabilities.length !== b.capabilities.length) return b.capabilities.length - a.capabilities.length;
+  return a.name.localeCompare(b.name);
+}
+
 /** SPEC §5.5 `/agents` — marketplace over the indexed registry catalog. */
 export default function AgentsPage() {
   const [agents, setAgents] = useState<AgentView[] | null>(null);
   const [capability, setCapability] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showTestAgents, setShowTestAgents] = useState(false);
 
   const load = (cap?: string) => {
     listAgents(cap || undefined)
@@ -16,6 +33,10 @@ export default function AgentsPage() {
   };
 
   useEffect(() => load(), []);
+
+  const showcase = (agents ?? []).filter(isShowcase).sort(rank);
+  const testAgents = (agents ?? []).filter((a) => !isShowcase(a)).sort(rank);
+  const visible = showTestAgents ? [...showcase, ...testAgents] : showcase;
 
   return (
     <div>
@@ -50,7 +71,7 @@ export default function AgentsPage() {
             </tr>
           </thead>
           <tbody>
-            {(agents ?? []).map((agent) => (
+            {visible.map((agent) => (
               <tr key={agent.agentId} className="border-b border-line/40 hover:bg-void/40">
                 <td className="px-4 py-3">
                   <div className="font-display font-semibold">{agent.name}</div>
@@ -94,16 +115,30 @@ export default function AgentsPage() {
                 </td>
               </tr>
             ))}
-            {agents !== null && agents.length === 0 && (
+            {agents !== null && visible.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center font-mono text-xs text-ink-3">
-                  no routable agents indexed yet — the indexer polls the registry every 60s
+                  no agents indexed yet — the indexer polls the registry every 60s
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        {testAgents.length > 0 && (
+          <button
+            onClick={() => setShowTestAgents(!showTestAgents)}
+            className="w-full py-3 border-t border-line font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-gold transition"
+          >
+            {showTestAgents ? "▲ hide" : "▼ show"} {testAgents.length} registry smoke-test agents (lifecycle / juror / sybil drills)
+          </button>
+        )}
       </div>
+      {agents !== null && (
+        <p className="font-mono text-[10px] text-ink-3 mt-3">
+          {agents.length} agents on-chain · {showcase.length} in marketplace · {agents.filter((a) => a.routable).length} routable
+          (live datums carry no endpoint — operators add one via a signed manifest or re-registration)
+        </p>
+      )}
     </div>
   );
 }
