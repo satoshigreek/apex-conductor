@@ -90,10 +90,30 @@ export class Orchestrator {
       await store.updateTask(task.taskId, { plan });
     } else {
       if (!this.deps.planner) {
-        await store.updateTask(task.taskId, {
-          status: "failed",
-          error: "planning_unavailable: no LLM provider configured (set ANTHROPIC_API_KEY / VENICE_API_KEY / OPENAI_API_KEY)",
+        // degraded mode: keyword-fallback planner (no LLM key configured)
+        const { keywordPlan } = await import("./keyword-planner.js");
+        const plan = keywordPlan(task.intent, task.budgetAp3x, await this.deps.catalog(), task.taskId);
+        if (!plan) {
+          await store.updateTask(task.taskId, {
+            status: "failed",
+            error:
+              "planning_unavailable: no LLM provider configured and no routable agents to keyword-match (set ANTHROPIC_API_KEY / VENICE_API_KEY / OPENAI_API_KEY for real planning)",
+          });
+          return;
+        }
+        await store.updateTask(task.taskId, { plan });
+        await store.appendEvent("planner", "plan_ready", {
+          taskId: task.taskId,
+          steps: plan.steps.length,
+          planner: "keyword-fallback (no LLM key — set ANTHROPIC_API_KEY for §9 planning)",
         });
+        if (task.mode === "confirm") {
+          await store.updateTask(task.taskId, { status: "awaiting_approval" });
+          await store.appendEvent("orchestrator", "awaiting_plan_approval", { taskId: task.taskId });
+          return;
+        }
+        if (this.deps.enqueue) await this.deps.enqueue(task.taskId);
+        else await this.executor.executeTask(task.taskId);
         return;
       }
       const outcome = await planTask(

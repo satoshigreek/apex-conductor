@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { TaskModeSchema } from "@apex/core";
@@ -38,6 +39,9 @@ interface KeyEntry {
 export function buildServer(deps: ServerDeps): FastifyInstance {
   // registry agent ids (policy.assetNameHex) run 121 chars — above Fastify's 100-char param default
   const app = Fastify({ logger: false, maxParamLength: 256 });
+  // browser clients (the GitHub Pages GUI, local web dev) call the API cross-origin;
+  // auth/rate limits remain the access control — CORS only governs the browser sandbox
+  void app.register(cors, { origin: true });
   const limit = deps.rateLimitPerMinute ?? 60;
   const keys: KeyEntry[] = deps.apiKeys.map((entry) => {
     const [key, webhookUrl] = entry.split(/:(.+)/);

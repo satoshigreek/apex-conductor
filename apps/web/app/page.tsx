@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { approveTask, getTask, submitIntent, COINGECKO_AP3X, EXPLORER_TX, type TaskView } from "@/lib/api";
+import { getNodeUrl, isStaticMode, setNodeUrl } from "@/lib/static-mode";
 
 /** SPEC §5.5 `/` — Conductor chat: Plan Card (DAG checklist), approval buttons, live budget meter. */
 export default function ConductorPage() {
@@ -12,7 +13,17 @@ export default function ConductorPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ap3xUsd, setAp3xUsd] = useState<number | null>(null);
+  const [staticMode, setStaticMode] = useState(false);
+  const [nodeUrl, setNodeUrlState] = useState("");
+  const [nodeSaved, setNodeSaved] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setStaticMode(isStaticMode());
+    const saved = getNodeUrl();
+    setNodeSaved(saved);
+    if (saved) setNodeUrlState(saved);
+  }, []);
 
   useEffect(() => {
     fetch(COINGECKO_AP3X)
@@ -109,6 +120,36 @@ export default function ConductorPage() {
           </div>
           {error && <p className="font-mono text-xs text-warn">{error}</p>}
         </div>
+
+        {staticMode && (
+          <div className="panel p-4 mt-4">
+            <p className="eyebrow mb-2">
+              Conductor node {nodeSaved ? <span className="text-good">· connected: {nodeSaved}</span> : <span className="text-warn">· not connected</span>}
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={nodeUrl}
+                onChange={(e) => setNodeUrlState(e.target.value)}
+                placeholder="https://your-conductor-node.example (cloudflared tunnel or hosted)"
+                className="flex-1 bg-void border border-line rounded-sm px-3 py-2 font-mono text-xs focus:border-gold outline-none"
+              />
+              <button
+                onClick={() => {
+                  setNodeUrl(nodeUrl || null);
+                  setNodeSaved(getNodeUrl());
+                  setError(null);
+                }}
+                className="btn-ghost"
+              >
+                {nodeSaved ? "Update" : "Connect"}
+              </button>
+            </div>
+            <p className="font-mono text-[10px] text-ink-3 mt-2">
+              the static page can browse the registry and quote refuels by itself — conducting tasks runs on YOUR node
+              (keys, spend caps and payments stay server-side)
+            </p>
+          </div>
+        )}
 
         {view && (
           <div className="panel p-5 mt-6">

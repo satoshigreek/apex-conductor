@@ -57,14 +57,22 @@ export interface AgentView {
   source: { endpoint: string; pricing: string } | null;
 }
 
-import { fetchCatalogStatic, isStaticMode, quoteRefuelStatic, STATIC_MODE_HINT } from "./static-mode";
+import { fetchCatalogStatic, getNodeUrl, isStaticMode, quoteRefuelStatic, STATIC_MODE_HINT } from "./static-mode";
 
-const CONDUCTOR = "/api/conductor";
 const REFUEL = "/api/refuel";
 
+/** conductor base: connected node (static mode with a node URL) or the local dev proxy */
+function conductorBase(): string {
+  if (isStaticMode()) {
+    const node = getNodeUrl();
+    if (node) return node;
+    throw new Error(STATIC_MODE_HINT);
+  }
+  return "/api/conductor";
+}
+
 export async function submitIntent(prompt: string, budgetAp3x: number, mode: "auto" | "confirm"): Promise<{ taskId: string }> {
-  if (isStaticMode()) throw new Error(STATIC_MODE_HINT);
-  const res = await fetch(`${CONDUCTOR}/v1/intents`, {
+  const res = await fetch(`${conductorBase()}/v1/intents`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ prompt, budgetAp3x, mode }),
@@ -74,13 +82,13 @@ export async function submitIntent(prompt: string, budgetAp3x: number, mode: "au
 }
 
 export async function getTask(taskId: string): Promise<TaskView> {
-  const res = await fetch(`${CONDUCTOR}/v1/tasks/${taskId}`);
+  const res = await fetch(`${conductorBase()}/v1/tasks/${taskId}`);
   if (!res.ok) throw new Error(`task fetch failed: ${res.status}`);
   return res.json();
 }
 
 export async function approveTask(taskId: string, stepId?: string): Promise<void> {
-  const res = await fetch(`${CONDUCTOR}/v1/tasks/${taskId}/approve`, {
+  const res = await fetch(`${conductorBase()}/v1/tasks/${taskId}/approve`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(stepId ? { stepId } : {}),
@@ -89,8 +97,8 @@ export async function approveTask(taskId: string, stepId?: string): Promise<void
 }
 
 export async function listAgents(capability?: string): Promise<AgentView[]> {
-  if (isStaticMode()) return fetchCatalogStatic(capability);
-  const res = await fetch(`${CONDUCTOR}/v1/agents${capability ? `?capability=${encodeURIComponent(capability)}` : ""}`);
+  if (isStaticMode() && !getNodeUrl()) return fetchCatalogStatic(capability);
+  const res = await fetch(`${conductorBase()}/v1/agents${capability ? `?capability=${encodeURIComponent(capability)}` : ""}`);
   if (!res.ok) throw new Error(`agents fetch failed: ${res.status}`);
   return res.json();
 }

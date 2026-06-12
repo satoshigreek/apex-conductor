@@ -14,7 +14,27 @@ export function isStaticMode(): boolean {
 }
 
 export const STATIC_MODE_HINT =
-  "This is the static showcase (GitHub Pages) — orchestration needs a conductor node. Clone github.com/satoshigreek/apex-conductor and run `pnpm install && pnpm build`, then `node services/conductor/dist/main.js`.";
+  "This is the static showcase (GitHub Pages) — orchestration needs a conductor node. Paste a node URL below (e.g. a cloudflared tunnel to your local conductor), or clone github.com/satoshigreek/apex-conductor and run one.";
+
+const NODE_URL_KEY = "apex-node-url";
+
+/** user-supplied conductor node (tunnel or hosted) the static GUI talks to directly;
+ *  shareable links can pre-connect via ?node=https://… */
+export function getNodeUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const fromQuery = new URLSearchParams(window.location.search).get("node");
+  if (fromQuery && /^https?:\/\//.test(fromQuery)) {
+    window.localStorage.setItem(NODE_URL_KEY, fromQuery.replace(/\/$/, ""));
+  }
+  const url = window.localStorage.getItem(NODE_URL_KEY);
+  return url && /^https?:\/\//.test(url) ? url.replace(/\/$/, "") : null;
+}
+
+export function setNodeUrl(url: string | null): void {
+  if (typeof window === "undefined") return;
+  if (url && /^https?:\/\//.test(url)) window.localStorage.setItem(NODE_URL_KEY, url.replace(/\/$/, ""));
+  else window.localStorage.removeItem(NODE_URL_KEY);
+}
 
 // ---------- live registry from the browser ----------
 
