@@ -59,7 +59,12 @@ export default function ConductorPage() {
       setView(await getTask(taskId));
       watch(taskId);
     } catch (err) {
-      setError((err as Error).message);
+      const message = (err as Error).message;
+      setError(
+        /failed to fetch|networkerror|load failed/i.test(message) && nodeSaved
+          ? `connected node is unreachable (${nodeSaved}) — tunnels expire when the host machine stops. Disconnect below to use browser demo mode, or point at a live node.`
+          : message,
+      );
     } finally {
       setBusy(false);
     }
@@ -139,15 +144,40 @@ export default function ConductorPage() {
                 className="flex-1 bg-void border border-line rounded-sm px-3 py-2 font-mono text-xs focus:border-gold outline-none"
               />
               <button
-                onClick={() => {
-                  setNodeUrl(nodeUrl || null);
-                  setNodeSaved(getNodeUrl());
+                onClick={async () => {
                   setError(null);
+                  const candidate = nodeUrl.trim().replace(/\/$/, "");
+                  if (!/^https?:\/\//.test(candidate)) {
+                    setError("node URL must start with http(s)://");
+                    return;
+                  }
+                  try {
+                    const res = await fetch(`${candidate}/health`, { signal: AbortSignal.timeout(5000) });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                  } catch {
+                    setError("node unreachable — check the URL (tunnels expire when the host machine stops). Demo mode keeps working without a node.");
+                    return;
+                  }
+                  setNodeUrl(candidate);
+                  setNodeSaved(getNodeUrl());
                 }}
                 className="btn-ghost"
               >
                 {nodeSaved ? "Update" : "Connect"}
               </button>
+              {nodeSaved && (
+                <button
+                  onClick={() => {
+                    setNodeUrl(null);
+                    setNodeSaved(null);
+                    setNodeUrlState("");
+                    setError(null);
+                  }}
+                  className="btn-ghost text-warn"
+                >
+                  Disconnect
+                </button>
+              )}
             </div>
             <p className="font-mono text-[10px] text-ink-3 mt-2">
               demo mode plans and executes in YOUR browser against live data (news · prices · bAP3X market · Vector chain ·
