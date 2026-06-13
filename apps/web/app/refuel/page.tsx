@@ -94,7 +94,7 @@ export default function RefuelPage() {
       <section>
         <p className="eyebrow mb-2">USDC in · AP3X gas out — the payment abstraction</p>
         <h1 className="font-display text-4xl font-semibold uppercase tracking-wide mb-6">
-          Refuel your <span className="text-gold">agents</span>
+          Refuel your <span className="text-accent">agents</span>
         </h1>
 
         {/* four-stage pipeline — the brand signature */}
@@ -105,7 +105,7 @@ export default function RefuelPage() {
                 <div className="flex flex-col items-center gap-2">
                   <div
                     className={`w-10 h-10 rounded-full border flex items-center justify-center font-display font-semibold
-                      ${i <= stage && result ? "border-gold text-gold" : "border-line text-ink-3"}
+                      ${i <= stage && result ? "border-accent text-accent" : "border-line text-ink-3"}
                       ${i === stage && busy ? "animate-pulse" : ""}`}
                   >
                     {i + 1}
@@ -113,7 +113,7 @@ export default function RefuelPage() {
                   <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3 text-center w-24">{label}</span>
                 </div>
                 {i < STAGES.length - 1 && (
-                  <div className={`h-px flex-1 mx-1 mb-6 ${i < stage && result ? "bg-gold" : "bg-line"}`} />
+                  <div className={`h-px flex-1 mx-1 mb-6 ${i < stage && result ? "bg-accent" : "bg-line"}`} />
                 )}
               </div>
             ))}
@@ -133,7 +133,7 @@ export default function RefuelPage() {
             value={vectorAddress}
             onChange={(e) => setVectorAddress(e.target.value)}
             placeholder="Vector gas address (vector_…)"
-            className="w-full bg-void border border-line rounded-sm p-3 font-mono text-xs focus:border-gold outline-none"
+            className="w-full bg-void border border-line rounded-sm p-3 font-mono text-xs focus:border-accent outline-none"
           />
           <div className="flex items-center gap-4">
             <label className="eyebrow flex items-center gap-2">
@@ -157,14 +157,14 @@ export default function RefuelPage() {
           <div className="panel p-5 mt-6 space-y-2 font-mono text-xs">
             <p className="eyebrow mb-2">{result.live ? "Executed" : "Dry-run quote (REFUEL_LIVE=false)"}</p>
             <p>
-              {result.quote.usdcIn} USDC → <span className="text-gold">{result.quote.bap3xOut.toFixed(4)} bAP3X</span>{" "}
+              {result.quote.usdcIn} USDC → <span className="text-accent">{result.quote.bap3xOut.toFixed(4)} bAP3X</span>{" "}
               <span className="text-ink-3">(min {result.quote.minBap3xOut.toFixed(4)} @ {result.quote.slippageBps} bps)</span>
             </p>
             {result.swapTx && <p>swap: {result.swapTx}</p>}
             {result.bridge?.deepLink && (
               <p>
                 bridge ({result.bridge.state}):{" "}
-                <a className="text-gold underline" href={result.bridge.deepLink} target="_blank" rel="noreferrer">
+                <a className="text-accent underline" href={result.bridge.deepLink} target="_blank" rel="noreferrer">
                   complete on Skyline ↗
                 </a>{" "}
                 <span className="text-ink-3">— bridge API pending (BLOCKER-1); guided handoff mode</span>
@@ -181,7 +181,7 @@ export default function RefuelPage() {
           <p className="eyebrow mb-3">Gas tank</p>
           <div className="relative h-44 border border-line rounded-sm overflow-hidden bg-void">
             <div
-              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gold/80 to-gold/40 transition-all duration-700"
+              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-accent/80 to-accent/40 transition-all duration-700"
               style={{ height: `${tankPct}%` }}
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -195,7 +195,7 @@ export default function RefuelPage() {
         <div className="panel p-5">
           <p className="eyebrow mb-2">x402 micropayments</p>
           <p className="font-body text-sm text-ink-2 leading-relaxed">
-            Agents can top up per-call: hit <code className="font-mono text-gold">/api/refuel/v1/gas/topup</code>, get an HTTP
+            Agents can top up per-call: hit <code className="font-mono text-accent">/api/refuel/v1/gas/topup</code>, get an HTTP
             402 challenge, sign an EIP-3009 USDC authorization, retry with <code className="font-mono">X-PAYMENT</code>. Settled
             through the facilitator; gas credits land here.
           </p>

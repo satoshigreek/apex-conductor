@@ -21,7 +21,7 @@ export default function TasksPage() {
     <div>
       <p className="eyebrow mb-2">Anchored on Vector — every task leaves an audit trail</p>
       <h1 className="font-display text-4xl font-semibold uppercase tracking-wide mb-6">
-        Task <span className="text-gold">history</span>
+        Task <span className="text-accent">history</span>
       </h1>
 
       {tasks.length === 0 ? (
@@ -40,7 +40,7 @@ export default function TasksPage() {
                 <span>{view.task.taskId}</span>
                 <span>{view.task.totalFeesAp3x} AP3X fees</span>
                 {view.task.anchorTx && (
-                  <a className="text-gold underline" href={EXPLORER_TX(view.task.anchorTx)} target="_blank" rel="noreferrer">
+                  <a className="text-accent underline" href={EXPLORER_TX(view.task.anchorTx)} target="_blank" rel="noreferrer">
                     anchor ↗
                   </a>
                 )}

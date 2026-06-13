@@ -98,7 +98,7 @@ export default function ConductorPage() {
       <section>
         <p className="eyebrow mb-2">Natural-language intent → agent DAG → AP3X settlement</p>
         <h1 className="font-display text-4xl font-semibold uppercase tracking-wide mb-6">
-          Conduct the <span className="text-gold">Vector</span> network
+          Conduct the <span className="text-accent">Vector</span> network
         </h1>
 
         <div className="panel p-5 space-y-4">
@@ -107,7 +107,7 @@ export default function ConductorPage() {
             onChange={(e) => setPrompt(e.target.value)}
             placeholder='e.g. "Summarize today&apos;s Apex Fusion news and quote me a 90-day staking yield on 500 AP3X"'
             rows={4}
-            className="w-full bg-void border border-line rounded-sm p-3 font-body text-sm focus:border-gold outline-none resize-none"
+            className="w-full bg-void border border-line rounded-sm p-3 font-body text-sm focus:border-accent outline-none resize-none"
           />
           <div className="flex flex-wrap items-center gap-4">
             <label className="eyebrow flex items-center gap-2">
@@ -146,7 +146,7 @@ export default function ConductorPage() {
               {nodeSaved ? (
                 <span className="text-good">· connected: {nodeSaved}</span>
               ) : (
-                <span className="text-gold">· browser demo mode — 6 virtual agents on live public APIs</span>
+                <span className="text-accent">· browser demo mode — 6 virtual agents on live public APIs</span>
               )}
             </p>
             <div className="flex gap-2">
@@ -154,7 +154,7 @@ export default function ConductorPage() {
                 value={nodeUrl}
                 onChange={(e) => setNodeUrlState(e.target.value)}
                 placeholder="https://your-conductor-node.example (cloudflared tunnel or hosted)"
-                className="flex-1 bg-void border border-line rounded-sm px-3 py-2 font-mono text-xs focus:border-gold outline-none"
+                className="flex-1 bg-void border border-line rounded-sm px-3 py-2 font-mono text-xs focus:border-accent outline-none"
               />
               <button
                 onClick={async () => {
@@ -218,7 +218,7 @@ export default function ConductorPage() {
                       {planStep.capability ?? planStep.tool ?? planStep.id}
                       {step?.agentId && <span className="text-ink-3"> · {step.agentId.slice(0, 18)}</span>}
                     </span>
-                    {step?.feePaidAp3x != null && <span className="font-mono text-xs text-gold">{step.feePaidAp3x} AP3X</span>}
+                    {step?.feePaidAp3x != null && <span className="font-mono text-xs text-accent">{step.feePaidAp3x} AP3X</span>}
                     <span className="font-mono text-[10px] text-ink-3 uppercase">{step?.status ?? "pending"}</span>
                   </li>
                 );
@@ -236,7 +236,7 @@ export default function ConductorPage() {
             {view.task.anchorTx && (
               <p className="font-mono text-xs mt-3 text-ink-2">
                 anchored:{" "}
-                <a className="text-gold underline" href={EXPLORER_TX(view.task.anchorTx)} target="_blank" rel="noreferrer">
+                <a className="text-accent underline" href={EXPLORER_TX(view.task.anchorTx)} target="_blank" rel="noreferrer">
                   {view.task.anchorTx.slice(0, 24)}…
                 </a>
               </p>
@@ -249,7 +249,7 @@ export default function ConductorPage() {
         <div className="panel p-5">
           <p className="eyebrow mb-3">Budget meter</p>
           <div className="h-2 bg-void rounded-sm overflow-hidden border border-line">
-            <div className="h-full bg-gold transition-all" style={{ width: `${budgetPct}%` }} />
+            <div className="h-full bg-accent transition-all" style={{ width: `${budgetPct}%` }} />
           </div>
           <div className="flex justify-between mt-2 font-mono text-xs text-ink-2">
             <span>{spent.toFixed(2)} AP3X spent</span>
@@ -299,7 +299,7 @@ function ResultPanel({ view }: { view: TaskView }) {
   if (!results) return null;
   return (
     <div className="mt-4 border-t border-line pt-4">
-      <p className="eyebrow mb-2 text-gold">Result</p>
+      <p className="eyebrow mb-2 text-accent">Result</p>
       {Object.entries(results).map(([stepId, output]) => (
         <div key={stepId} className="mb-3">
           <p className="font-mono text-[10px] text-ink-3 mb-1">{stepId}</p>
@@ -331,9 +331,9 @@ function StepResult({ output }: { output: unknown }) {
             href={h.link}
             target="_blank"
             rel="noreferrer"
-            className="block font-body text-sm text-ink hover:text-gold transition leading-snug"
+            className="block font-body text-sm text-ink hover:text-accent transition leading-snug"
           >
-            <span className="text-gold mr-2">›</span>
+            <span className="text-accent mr-2">›</span>
             {h.title}
             {h.pubDate && <span className="font-mono text-[10px] text-ink-3 ml-2">{new Date(h.pubDate).toLocaleDateString()}</span>}
           </a>
@@ -353,7 +353,7 @@ function StepResult({ output }: { output: unknown }) {
       <div className="font-body text-sm text-ink-2 space-y-1">
         {quotes.map((q) => (
           <p key={q.asset}>
-            {q.asset}: <span className="text-gold">${q.usd < 1 ? q.usd.toFixed(6) : q.usd.toLocaleString()}</span>
+            {q.asset}: <span className="text-accent">${q.usd < 1 ? q.usd.toFixed(6) : q.usd.toLocaleString()}</span>
             {q.change24h !== null && (
               <span className={q.change24h >= 0 ? "text-good" : "text-warn"}> {q.change24h >= 0 ? "+" : ""}{q.change24h.toFixed(2)}% 24h</span>
             )}
@@ -367,7 +367,7 @@ function StepResult({ output }: { output: unknown }) {
     const m = o as unknown as { pool: string; priceUsd: number; volume24hUsd: number; reserveUsd: number; change24hPct: number; fdvUsd: number; source: string };
     return (
       <div className="font-body text-sm text-ink-2 space-y-1">
-        <p>{m.pool}: <span className="text-gold">${m.priceUsd.toFixed(6)}</span>
+        <p>{m.pool}: <span className="text-accent">${m.priceUsd.toFixed(6)}</span>
           <span className={m.change24hPct >= 0 ? "text-good" : "text-warn"}> {m.change24hPct >= 0 ? "+" : ""}{m.change24hPct.toFixed(2)}% 24h</span>
         </p>
         <p>24h volume ${Math.round(m.volume24hUsd).toLocaleString()} · liquidity ${Math.round(m.reserveUsd).toLocaleString()} · FDV ${Math.round(m.fdvUsd).toLocaleString()}</p>
@@ -379,7 +379,7 @@ function StepResult({ output }: { output: unknown }) {
     const c = o as unknown as { chain: string; blockHeight: number; epoch: number; supplyAp3x: number | null; circulatingAp3x: number | null; lastBlock: string };
     return (
       <div className="font-body text-sm text-ink-2 space-y-1">
-        <p>{c.chain} · block <span className="text-gold">{c.blockHeight.toLocaleString()}</span> · epoch {c.epoch}</p>
+        <p>{c.chain} · block <span className="text-accent">{c.blockHeight.toLocaleString()}</span> · epoch {c.epoch}</p>
         {c.supplyAp3x && <p>supply {Math.round(c.supplyAp3x).toLocaleString()} AP3X{c.circulatingAp3x ? ` · circulating ${Math.round(c.circulatingAp3x).toLocaleString()}` : ""}</p>}
         <p className="font-mono text-[10px] text-ink-3">last block {new Date(c.lastBlock).toLocaleString()}</p>
       </div>
@@ -389,7 +389,7 @@ function StepResult({ output }: { output: unknown }) {
     const r = o as unknown as { totalAgents: number; registeredLast7d: number; note: string };
     return (
       <div className="font-body text-sm text-ink-2 space-y-1">
-        <p><span className="text-gold">{r.totalAgents}</span> agents on the registry · {r.registeredLast7d} new in 7d</p>
+        <p><span className="text-accent">{r.totalAgents}</span> agents on the registry · {r.registeredLast7d} new in 7d</p>
         <p className="font-mono text-[10px] text-ink-3">{r.note}</p>
       </div>
     );
@@ -414,13 +414,13 @@ function StepResult({ output }: { output: unknown }) {
 function statusColor(status: string): string {
   if (status === "complete") return "text-good";
   if (status === "failed") return "text-warn";
-  if (status === "awaiting_approval") return "text-gold";
+  if (status === "awaiting_approval") return "text-accent";
   return "text-ink-2";
 }
 
 function dotColor(status: string): string {
   if (status === "complete") return "bg-good";
   if (status === "failed" || status === "skipped") return "bg-warn";
-  if (status === "running" || status === "awaiting_approval") return "bg-gold animate-pulse";
+  if (status === "running" || status === "awaiting_approval") return "bg-accent animate-pulse";
   return "bg-line";
 }

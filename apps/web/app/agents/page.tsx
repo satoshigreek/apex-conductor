@@ -42,7 +42,7 @@ export default function AgentsPage() {
     <div>
       <p className="eyebrow mb-2">On-chain Vector Agent Registry · policy be1a0a29…2c01</p>
       <h1 className="font-display text-4xl font-semibold uppercase tracking-wide mb-6">
-        Agent <span className="text-gold">marketplace</span>
+        Agent <span className="text-accent">marketplace</span>
       </h1>
 
       <div className="flex gap-3 mb-6">
@@ -50,7 +50,7 @@ export default function AgentsPage() {
           value={capability}
           onChange={(e) => setCapability(e.target.value)}
           placeholder="filter by capability (e.g. news, staking, price)"
-          className="bg-void border border-line rounded-sm px-3 py-2 font-mono text-xs w-80 focus:border-gold outline-none"
+          className="bg-void border border-line rounded-sm px-3 py-2 font-mono text-xs w-80 focus:border-accent outline-none"
         />
         <button onClick={() => load(capability)} className="btn-ghost">
           Filter
@@ -90,7 +90,7 @@ export default function AgentsPage() {
                     ))}
                   </div>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-gold">
+                <td className="px-4 py-3 font-mono text-xs text-accent">
                   {agent.pricing ? (
                     <>
                       {agent.pricing.amountAp3x} <span className="text-ink-3">AP3X/{agent.pricing.model.replace("per_", "")}</span>
@@ -102,7 +102,7 @@ export default function AgentsPage() {
                 <td className="px-4 py-3 font-mono text-xs">{agent.stakeAp3x}</td>
                 <td className="px-4 py-3">
                   <div className="w-20 h-1.5 bg-void border border-line rounded-sm overflow-hidden">
-                    <div className="h-full bg-gold" style={{ width: `${agent.reputation.score * 100}%` }} />
+                    <div className="h-full bg-accent" style={{ width: `${agent.reputation.score * 100}%` }} />
                   </div>
                   <span className="font-mono text-[10px] text-ink-3">
                     {(agent.reputation.score * 100).toFixed(0)} · {agent.reputation.tasks} tasks
@@ -131,7 +131,7 @@ export default function AgentsPage() {
         {testAgents.length > 0 && (
           <button
             onClick={() => setShowTestAgents(!showTestAgents)}
-            className="w-full py-3 border-t border-line font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-gold transition"
+            className="w-full py-3 border-t border-line font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-accent transition"
           >
             {showTestAgents ? "▲ hide" : "▼ show"} {testAgents.length} registry smoke-test agents (lifecycle / juror / sybil drills)
           </button>

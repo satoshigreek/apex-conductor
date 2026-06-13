@@ -118,7 +118,7 @@ export default function ClientsPage() {
     <div>
       <p className="eyebrow mb-2">Layer 6 — AI clients · one orchestrator, three doors: MCP · REST/SSE · web</p>
       <h1 className="font-display text-4xl font-semibold uppercase tracking-wide mb-6">
-        Connect a <span className="text-gold">client</span>
+        Connect a <span className="text-accent">client</span>
       </h1>
 
       <div className="panel p-5 mb-8">
@@ -143,7 +143,7 @@ export default function ClientsPage() {
             >
               <span className="font-display font-semibold text-lg flex-1">{client.name}</span>
               <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3 hidden sm:inline">{client.kind}</span>
-              <span className="font-mono text-[10px] uppercase border border-line rounded-sm px-2 py-0.5 text-gold">{client.path}</span>
+              <span className="font-mono text-[10px] uppercase border border-line rounded-sm px-2 py-0.5 text-accent">{client.path}</span>
               <span className="font-mono text-xs text-ink-3">{open === client.name ? "▲" : "▼"}</span>
             </button>
             {open === client.name && (
