@@ -57,7 +57,11 @@ export default function AgentsPage() {
         </button>
       </div>
 
-      {error && <p className="font-mono text-xs text-warn mb-4">{error} — is the conductor service running?</p>}
+      {error && (
+        <p className="font-mono text-xs text-warn mb-4">
+          {error} — registry temporarily unreachable (Koios and any connected node both failed); retry in a moment
+        </p>
+      )}
 
       <div className="panel overflow-x-auto">
         <table className="w-full text-left">

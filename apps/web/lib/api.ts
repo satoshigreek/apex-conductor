@@ -95,9 +95,19 @@ export async function getTask(taskId: string): Promise<TaskView> {
     if (!view) throw new Error("task not found in this browser");
     return view;
   }
-  const res = await fetch(`${conductorBase()}/v1/tasks/${taskId}`);
-  if (!res.ok) throw new Error(`task fetch failed: ${res.status}`);
-  return res.json();
+  try {
+    const res = await fetch(`${conductorBase()}/v1/tasks/${taskId}`, isStaticMode() ? { signal: AbortSignal.timeout(8000) } : undefined);
+    if (!res.ok) throw new Error(`task fetch failed: ${res.status}`);
+    return res.json();
+  } catch (err) {
+    // node unreachable: browser-conducted tasks are still viewable from local storage
+    if (isStaticMode()) {
+      const { getBrowserTask } = await import("./browser-conductor");
+      const view = getBrowserTask(taskId);
+      if (view) return view;
+    }
+    throw err;
+  }
 }
 
 export async function approveTask(taskId: string, stepId?: string): Promise<void> {
@@ -110,8 +120,22 @@ export async function approveTask(taskId: string, stepId?: string): Promise<void
 }
 
 export async function listAgents(capability?: string): Promise<AgentView[]> {
-  if (isStaticMode() && !getNodeUrl()) return fetchCatalogStatic(capability);
-  const res = await fetch(`${conductorBase()}/v1/agents${capability ? `?capability=${encodeURIComponent(capability)}` : ""}`);
+  if (isStaticMode()) {
+    const node = getNodeUrl();
+    if (node) {
+      // a dead saved node must not break the marketplace — fall back to the live on-chain catalog
+      try {
+        const res = await fetch(`${node}/v1/agents${capability ? `?capability=${encodeURIComponent(capability)}` : ""}`, {
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.ok) return res.json();
+      } catch {
+        /* fall through to static catalog */
+      }
+    }
+    return fetchCatalogStatic(capability);
+  }
+  const res = await fetch(`/api/conductor/v1/agents${capability ? `?capability=${encodeURIComponent(capability)}` : ""}`);
   if (!res.ok) throw new Error(`agents fetch failed: ${res.status}`);
   return res.json();
 }

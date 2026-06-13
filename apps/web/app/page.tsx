@@ -23,6 +23,19 @@ export default function ConductorPage() {
     const saved = getNodeUrl();
     setNodeSaved(saved);
     if (saved) setNodeUrlState(saved);
+    // self-heal: a saved node that died (e.g. expired tunnel) must never brick the page
+    if (saved && isStaticMode()) {
+      void fetch(`${saved}/health`, { signal: AbortSignal.timeout(5000) })
+        .then((res) => {
+          if (!res.ok) throw new Error("unhealthy");
+        })
+        .catch(() => {
+          setNodeUrl(null);
+          setNodeSaved(null);
+          setNodeUrlState("");
+          setError(`saved node ${saved} was unreachable — switched to browser demo mode automatically (tunnels expire when their host stops)`);
+        });
+    }
   }, []);
 
   useEffect(() => {
