@@ -29,22 +29,90 @@ function topic(intent: string): string {
     .join(" ");
 }
 
+interface Headline {
+  title: string;
+  link: string;
+  pubDate: string;
+}
+
+function decodeXml(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'");
+}
+
+/** parse the first 5 <item> entries out of an RSS XML string (regex — no DOMParser/SSR dependency) */
+function parseRssItems(xml: string): Headline[] {
+  return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+    .slice(0, 5)
+    .map((m) => {
+      const block = m[1]!;
+      const title = block.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/)?.[1]?.trim() ?? "";
+      const link = block.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() ?? "";
+      const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim() ?? "";
+      return { title: decodeXml(title), link, pubDate };
+    })
+    .filter((h) => h.title.length > 0);
+}
+
+/**
+ * Fetch Google News headlines from the browser. Google News RSS is not CORS-open, so we
+ * fan out across several CORS-open relays and return the first that yields headlines —
+ * resilient to any single relay being down or rate-limited (the keyless rss2json tier
+ * routinely returns HTTP 200 with an empty/error body). The whole chain is the fallback.
+ */
+async function fetchHeadlines(q: string): Promise<Headline[]> {
+  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
+  // rss2json returns pre-parsed JSON; allorigins/corsproxy return the raw RSS XML.
+  const sources: Array<() => Promise<Headline[]>> = [
+    async () => {
+      const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`);
+      if (!res.ok) throw new Error(`rss2json ${res.status}`);
+      const body = (await res.json()) as { items?: Array<{ title?: string; link?: string; pubDate?: string }> };
+      return (body.items ?? [])
+        .slice(0, 5)
+        .map((i) => ({ title: i.title ?? "", link: i.link ?? "", pubDate: i.pubDate ?? "" }))
+        .filter((h) => h.title.length > 0);
+    },
+    async () => {
+      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`);
+      if (!res.ok) throw new Error(`allorigins ${res.status}`);
+      return parseRssItems(await res.text());
+    },
+    async () => {
+      const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`);
+      if (!res.ok) throw new Error(`corsproxy ${res.status}`);
+      return parseRssItems(await res.text());
+    },
+  ];
+
+  let lastErr: unknown = null;
+  for (const source of sources) {
+    try {
+      const headlines = await source();
+      if (headlines.length > 0) return headlines;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (lastErr) throw new Error(`all news relays failed (last: ${(lastErr as Error).message})`);
+  return [];
+}
+
 export const NewsAgent: VirtualAgent = {
   agentId: "virtual:news",
   name: "NewsAgent",
   capabilities: ["news", "research", "summarize"],
   priceAp3x: 2,
-  description: "Live headlines for any topic (Google News via rss2json)",
+  description: "Live headlines for any topic (Google News RSS via CORS relays)",
   async run(intent) {
     const q = topic(intent) || "apex fusion crypto";
-    const res = await fetch(
-      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`)}`,
-    );
-    if (!res.ok) throw new Error(`rss2json ${res.status}`);
-    const body = (await res.json()) as { items?: Array<{ title: string; link: string; pubDate: string }> };
-    const headlines = (body.items ?? []).slice(0, 5).map((i) => ({ title: i.title, link: i.link, pubDate: i.pubDate }));
+    const headlines = await fetchHeadlines(q);
     if (headlines.length === 0) throw new Error("no headlines found");
-    return { kind: "news", topic: q, headline: headlines[0]!.title, headlines, source: "Google News (rss2json)", fetchedAt: new Date().toISOString() };
+    return { kind: "news", topic: q, headline: headlines[0]!.title, headlines, source: "Google News RSS", fetchedAt: new Date().toISOString() };
   },
 };
 
