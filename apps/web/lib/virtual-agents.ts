@@ -58,48 +58,69 @@ function parseRssItems(xml: string): Headline[] {
     .filter((h) => h.title.length > 0);
 }
 
+interface NewsResult {
+  headlines: Headline[];
+  source: string;
+}
+
+/** read Google News RSS through a CORS relay that returns the raw XML body */
+function googleNewsViaProxy(label: string, proxied: string, rssUrl: string): () => Promise<NewsResult> {
+  return async () => {
+    const res = await fetch(`${proxied}${encodeURIComponent(rssUrl)}`);
+    if (!res.ok) throw new Error(`${label} ${res.status}`);
+    return { headlines: parseRssItems(await res.text()), source: `Google News RSS (${label})` };
+  };
+}
+
 /**
- * Fetch Google News headlines from the browser. Google News RSS is not CORS-open, so we
- * fan out across several CORS-open relays and return the first that yields headlines —
- * resilient to any single relay being down or rate-limited (the keyless rss2json tier
- * routinely returns HTTP 200 with an empty/error body). The whole chain is the fallback.
+ * Fetch live headlines for a topic from the browser. Google News RSS is not CORS-open, so it is
+ * read through public CORS relays (rss2json returns parsed JSON; allorigins / codetabs / corsproxy
+ * return raw XML). Those relays are individually flaky and rate-limited — the keyless rss2json tier
+ * routinely returns HTTP 200 with an empty body — so we try each in turn. Hacker News (Algolia) is
+ * CORS-open, keyless and reliable, and is the dependable backstop so the agent rarely fails outright.
  */
-async function fetchHeadlines(q: string): Promise<Headline[]> {
+async function fetchHeadlines(q: string): Promise<NewsResult> {
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
-  // rss2json returns pre-parsed JSON; allorigins/corsproxy return the raw RSS XML.
-  const sources: Array<() => Promise<Headline[]>> = [
+  const sources: Array<() => Promise<NewsResult>> = [
     async () => {
       const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`);
       if (!res.ok) throw new Error(`rss2json ${res.status}`);
       const body = (await res.json()) as { items?: Array<{ title?: string; link?: string; pubDate?: string }> };
-      return (body.items ?? [])
+      const headlines = (body.items ?? [])
         .slice(0, 5)
         .map((i) => ({ title: i.title ?? "", link: i.link ?? "", pubDate: i.pubDate ?? "" }))
         .filter((h) => h.title.length > 0);
+      return { headlines, source: "Google News RSS (rss2json)" };
     },
+    googleNewsViaProxy("allorigins", "https://api.allorigins.win/raw?url=", rssUrl),
+    googleNewsViaProxy("codetabs", "https://api.codetabs.com/v1/proxy?quest=", rssUrl),
+    googleNewsViaProxy("corsproxy", "https://corsproxy.io/?url=", rssUrl),
     async () => {
-      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`);
-      if (!res.ok) throw new Error(`allorigins ${res.status}`);
-      return parseRssItems(await res.text());
-    },
-    async () => {
-      const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`);
-      if (!res.ok) throw new Error(`corsproxy ${res.status}`);
-      return parseRssItems(await res.text());
+      const res = await fetch(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=5`);
+      if (!res.ok) throw new Error(`hn ${res.status}`);
+      const body = (await res.json()) as { hits?: Array<{ title?: string; url?: string; objectID?: string; created_at?: string }> };
+      const headlines = (body.hits ?? [])
+        .map((h) => ({
+          title: h.title ?? "",
+          link: h.url ?? (h.objectID ? `https://news.ycombinator.com/item?id=${h.objectID}` : ""),
+          pubDate: h.created_at ?? "",
+        }))
+        .filter((h) => h.title.length > 0)
+        .slice(0, 5);
+      return { headlines, source: "Hacker News" };
     },
   ];
 
   let lastErr: unknown = null;
   for (const source of sources) {
     try {
-      const headlines = await source();
-      if (headlines.length > 0) return headlines;
+      const result = await source();
+      if (result.headlines.length > 0) return result;
     } catch (err) {
       lastErr = err;
     }
   }
-  if (lastErr) throw new Error(`all news relays failed (last: ${(lastErr as Error).message})`);
-  return [];
+  throw new Error(`all news relays failed${lastErr ? ` (last: ${(lastErr as Error).message})` : ""}`);
 }
 
 export const NewsAgent: VirtualAgent = {
@@ -107,12 +128,11 @@ export const NewsAgent: VirtualAgent = {
   name: "NewsAgent",
   capabilities: ["news", "research", "summarize"],
   priceAp3x: 2,
-  description: "Live headlines for any topic (Google News RSS via CORS relays)",
+  description: "Live headlines for any topic (Google News with a Hacker News backstop)",
   async run(intent) {
     const q = topic(intent) || "apex fusion crypto";
-    const headlines = await fetchHeadlines(q);
-    if (headlines.length === 0) throw new Error("no headlines found");
-    return { kind: "news", topic: q, headline: headlines[0]!.title, headlines, source: "Google News RSS", fetchedAt: new Date().toISOString() };
+    const { headlines, source } = await fetchHeadlines(q);
+    return { kind: "news", topic: q, headline: headlines[0]!.title, headlines, source, fetchedAt: new Date().toISOString() };
   },
 };
 

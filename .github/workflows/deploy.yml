@@ -1,0 +1,49 @@
+name: Deploy static site
+
+# Rebuilds the GitHub Pages static export (served from /docs on main) whenever
+# app source changes land on main, then commits the regenerated /docs back —
+# so fixes go live without a manual rebuild. paths-ignore + [skip ci] on the
+# bot commit prevent the docs push from retriggering this workflow.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: true
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build static export
+        run: STATIC_EXPORT=1 pnpm --filter @apex/web build
+      - name: Sync build output into docs/
+        run: |
+          find docs -mindepth 1 -not -name '.nojekyll' -delete
+          cp -a apps/web/out/. docs/
+          touch docs/.nojekyll
+      - name: Commit regenerated docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain docs apps/web/out)" ]; then
+            git add docs apps/web/out
+            git commit -m "chore(web): rebuild static /docs [skip ci]"
+            git push
+          else
+            echo "static export already up to date"
+          fi
