@@ -30,7 +30,12 @@ export function getBrowserTask(taskId: string): TaskView | null {
   return loadTasks()[taskId] ?? null;
 }
 
-/** split a compound intent into up to 3 sub-intents and match each to the best virtual agent */
+/**
+ * Split a compound intent into up to 3 sub-intents and route each. Any agent whose capability
+ * is named outright (e.g. "news", "price") always runs — so "news about the apex price" calls
+ * BOTH the news and price agents. Only when nothing is named directly do we fall back to the
+ * single best fuzzy (synonym) match, where ties favour the news/research agent.
+ */
 function plan(intent: string): Array<{ subIntent: string; agent: VirtualAgent }> {
   const parts = intent
     .split(/\s+(?:and then|and also|and|then|;|\+)\s+/i)
@@ -42,26 +47,38 @@ function plan(intent: string): Array<{ subIntent: string; agent: VirtualAgent }>
   const picks: Array<{ subIntent: string; agent: VirtualAgent }> = [];
   for (const sub of subIntents) {
     const words = new Set(sub.toLowerCase().split(/[^a-z0-9_-]+/));
+    const direct: VirtualAgent[] = [];
     let best: { agent: VirtualAgent; score: number } | null = null;
     for (const agent of VIRTUAL_AGENTS) {
+      let capHit = false;
       let score = 0;
       for (const cap of agent.capabilities) {
-        if (words.has(cap)) score += 3;
-        for (const t of cap.split(/[_-]/)) if (words.has(t)) score += 2;
+        if (words.has(cap)) {
+          score += 3;
+          capHit = true;
+        }
+        for (const t of cap.split(/[_-]/)) if (words.has(t)) {
+          score += 2;
+          capHit = true;
+        }
       }
       for (const syn of agentSynonyms(agent)) if (words.has(syn)) score += 2;
+      if (capHit) direct.push(agent);
       if (!best || score > best.score) best = { agent, score };
     }
-    if (best && best.score > 0) picks.push({ subIntent: sub, agent: best.agent });
+    if (direct.length > 0) for (const agent of direct) picks.push({ subIntent: sub, agent });
+    else if (best && best.score > 0) picks.push({ subIntent: sub, agent: best.agent });
   }
   if (picks.length === 0) picks.push({ subIntent: intent, agent: VIRTUAL_AGENTS[0]! }); // default: news/research
-  // dedupe same agent twice with identical sub-intent
-  return picks.filter((p, i) => picks.findIndex((q) => q.agent.agentId === p.agent.agentId && q.subIntent === p.subIntent) === i);
+  // dedupe (same agent + sub-intent) and cap plan size to bound simulated spend
+  return picks
+    .filter((p, i) => picks.findIndex((q) => q.agent.agentId === p.agent.agentId && q.subIntent === p.subIntent) === i)
+    .slice(0, 3);
 }
 
 function agentSynonyms(agent: VirtualAgent): string[] {
   switch (agent.agentId) {
-    case "virtual:news": return ["news", "headlines", "happening", "iran", "going", "research", "report"];
+    case "virtual:news": return ["news", "headlines", "happening", "iran", "going", "research", "report", "reports", "story", "stories", "update", "updates", "latest", "breaking", "developments", "world"];
     case "virtual:price": return ["price", "worth", "cost", "usd", "btc", "eth", "ada", "ap3x", "apex"];
     case "virtual:market": return ["market", "pool", "liquidity", "volume", "fdv", "aerodrome", "dex", "bap3x"];
     case "virtual:chain": return ["chain", "block", "epoch", "supply", "vector", "network", "tip"];
